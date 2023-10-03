@@ -4,6 +4,8 @@ import com.volmit.turntable.Turntable;
 import com.volmit.turntable.capability.TurnBased;
 import com.volmit.turntable.util.EntityUtil;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.world.World;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -13,14 +15,43 @@ public class Encounter {
     public List<Member> members;
     public int activeMember;
     public int turn;
+    public int ticks = 0;
     public boolean closed;
+    public World world;
+    public TBServer server;
 
-    public Encounter(EncounterType type) {
+    public Encounter(TBServer server, World world, EncounterType type) {
         this.type = type;
+        this.server = server;
+        this.world = world;
         members = new ArrayList<>();
         activeMember = 0;
         turn = 0;
         closed = false;
+    }
+
+    public void onTick(){
+        if(closed){
+            return;
+        }
+
+        ticks++;
+        clean();
+        validate();
+
+        if(closed){
+            return;
+        }
+
+        getActiveMember().onTick();
+
+        if(ticks > Turntable.TURN_TIME){
+            ticks = 0;
+
+            if(!(getActiveMember().entity instanceof EntityPlayer)) {
+                next();
+            }
+        }
     }
 
     public void begin(List<Entity> entities){
@@ -44,9 +75,7 @@ public class Encounter {
     }
 
     public void onClose() {
-        for(Member i : new ArrayList<>(members)) {
-            removeMember(i);
-        }
+
     }
 
     public void onStart() {
@@ -62,6 +91,7 @@ public class Encounter {
         tb.setTBState(TBState.FROZEN);
         tb.updateTrackers(member.entity);
         addNearbyMembers();
+        member.entity.setGlowing(false);
         member.onEndTurn(this);
     }
 
@@ -77,6 +107,11 @@ public class Encounter {
 
     private void addNearbyMembers() {
         for(Entity i : EntityUtil.explode(getMembersAsEntities(), Turntable.ENCOUNTER_RADIUS)) {
+            if(server.getEncounter(i) != null) {
+                // TODO: MERGE ENCOUNTERS
+                continue;
+            }
+
             addMember(i);
         }
     }
@@ -89,6 +124,8 @@ public class Encounter {
         tb.setDamageable(false);
         tb.updateTrackers(member.entity);
         member.onStartTurn(this);
+        member.entity.setGlowing(true);
+        System.out.println("Turn: " + member.entity.getName());
     }
 
     public void clean(){
@@ -106,21 +143,21 @@ public class Encounter {
         for(Member i : new ArrayList<>(members)) {
             removeMember(i);
         }
+        closed = true;
     }
 
-    public boolean next(){
+    public void validate(){
         if(closed) {
-            return false;
+            return;
         }
-
         if(members.size() < 2 && type == EncounterType.COMBAT){
             close();
-            return false;
+            return;
         }
 
         if(members.isEmpty()) {
             close();
-            return false;
+            return;
         }
 
         boolean hasPlayer = false;
@@ -133,9 +170,14 @@ public class Encounter {
 
         if(!hasPlayer) {
             close();
+        }
+    }
+
+    public boolean next(){
+        validate();
+        if(closed) {
             return false;
         }
-
 
         onEndTurn(getActiveMember());
         clean();
@@ -162,6 +204,14 @@ public class Encounter {
     }
 
     public Member getActiveMember() {
+        if(members.isEmpty()) {
+            return null;
+        }
+
+        if(members.size() <= activeMember) {
+            activeMember = members.size()-1;
+        }
+
         return members.get(activeMember);
     }
 
@@ -174,12 +224,13 @@ public class Encounter {
             return;
         }
 
-        Member a = getActiveMember();
         Member member = new Member(entity);
         member.getTB().setTBState(TBState.FROZEN);
         member.getTB().setDamageable(false);
         member.getTB().updateTrackers(member.entity);
+        member.getTB().setInitiative(member.getTB().calculateInitiative(entity));
         members.add(member);
+        Member a = getActiveMember();
         sortByInitiative();
         activeMember = getMemberIndex(a);
         member.onEnter(this);

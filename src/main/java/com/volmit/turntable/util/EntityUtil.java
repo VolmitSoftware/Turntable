@@ -1,8 +1,10 @@
 package com.volmit.turntable.util;
 
+import com.volmit.turntable.capability.TurnBasedProvider;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.passive.EntityAnimal;
 import net.minecraft.potion.PotionEffect;
+import net.minecraftforge.fml.common.ObfuscationReflectionHelper;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -18,6 +20,7 @@ public class EntityUtil {
         }
 
         all.removeIf((i) -> e instanceof EntityAnimal);
+        all.removeIf((i) -> i.getCapability(TurnBasedProvider.TBC, null) == null);
         all.addAll(e);
         return new ArrayList<>(all);
     }
@@ -25,7 +28,7 @@ public class EntityUtil {
     public static int getPotionEffectDuration(PotionEffect i)
     {
         try {
-            Field d = i.getClass().getDeclaredField("duration");
+            Field d = ObfuscationReflectionHelper.findField(PotionEffect.class, "duration");
             d.setAccessible(true);
             return d.getInt(i);
         }
@@ -40,7 +43,7 @@ public class EntityUtil {
     public static void setPotionEffectDuration(PotionEffect i, int ticks)
     {
         try {
-            Field d = i.getClass().getDeclaredField("duration");
+            Field d = ObfuscationReflectionHelper.findField(PotionEffect.class, "duration");
             d.setAccessible(true);
             d.setInt(i, ticks);
         }
@@ -52,7 +55,7 @@ public class EntityUtil {
 
     public static int getFireTicks(Entity entity) {
         try {
-            Field f = entity.getClass().getDeclaredField("fire");
+            Field f = ObfuscationReflectionHelper.findField(Entity.class, "fire");
             f.setAccessible(true);
             return f.getInt(entity);
         } catch(Throwable e) {
@@ -65,7 +68,7 @@ public class EntityUtil {
     public static void setFireTicks(Entity entity, int ticks)
     {
         try {
-            Field f = entity.getClass().getDeclaredField("fire");
+            Field f = ObfuscationReflectionHelper.findField(Entity.class, "fire");
             f.setAccessible(true);
             f.setInt(entity, ticks);
         } catch(Throwable e) {

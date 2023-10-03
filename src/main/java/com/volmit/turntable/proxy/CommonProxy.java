@@ -1,6 +1,7 @@
 package com.volmit.turntable.proxy;
 
 import com.volmit.turntable.Turntable;
+import com.volmit.turntable.api.Encounter;
 import com.volmit.turntable.api.TBServer;
 import com.volmit.turntable.capability.TurnBased;
 import com.volmit.turntable.capability.TurnBasedData;
@@ -15,6 +16,7 @@ import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.IProjectile;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.item.EntityXPOrb;
+import net.minecraft.entity.passive.EntityAnimal;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.projectile.EntityArrow;
 import net.minecraft.entity.projectile.EntityFireball;
@@ -27,37 +29,39 @@ import net.minecraftforge.event.entity.living.LivingAttackEvent;
 import net.minecraftforge.event.entity.living.LivingHurtEvent;
 import net.minecraftforge.fml.common.FMLCommonHandler;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+import net.minecraftforge.fml.common.gameevent.PlayerEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
 import net.minecraftforge.fml.common.network.NetworkRegistry;
 import net.minecraftforge.fml.common.network.simpleimpl.SimpleNetworkWrapper;
 import net.minecraftforge.fml.relauncher.Side;
 
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 
 public class CommonProxy {
     public static SimpleNetworkWrapper network;
+    private TBServer server;
 
     public void preInit(){
-        System.out.println("CommonProxy preInit");
+        Turntable.logger.info("CommonProxy preInit");
         MinecraftForge.EVENT_BUS.register(this);
     }
 
     public void init(){
-        System.out.println("CommonProxy init");
+        Turntable.logger.info("CommonProxy init");
         CapabilityManager.INSTANCE.register(TurnBased.class, new TurnBasedStorage(), TurnBasedData.class);
         registerPackets();
     }
 
+    public void postInit() {
+        Turntable.logger.info("CommonProxy postInit");
+    }
+
     public void registerPackets(){
+        Turntable.logger.info("CommonProxy Register Packets");
         int packetId = 0;
         network = NetworkRegistry.INSTANCE.newSimpleChannel(Turntable.MODID);
         network.registerMessage(new SyncTurnBasedCapabilityHandler(), SyncTurnBasedCapabilityPacket.class, packetId++, Side.CLIENT);
-    }
-
-    public void postInit() {
-        System.out.println("CommonProxy postInit");
     }
 
     public void update(Entity entity) {
@@ -76,6 +80,7 @@ public class CommonProxy {
             // Prevent potions from expiring
             if(entity instanceof EntityLiving) {
                 EntityLiving l = (EntityLiving) entity;
+                l.setRevengeTarget(null);
                 l.tasks.taskEntries.clear();
                 l.targetTasks.taskEntries.clear();
 
@@ -92,6 +97,53 @@ public class CommonProxy {
     }
 
     @SubscribeEvent
+    public void onLogin(PlayerEvent.PlayerLoggedInEvent event) {
+        if(FMLCommonHandler.instance().getEffectiveSide() == Side.SERVER && server == null) {
+            server = new TBServer();
+        }
+    }
+
+    @SubscribeEvent
+    public void onEntityDamage(LivingAttackEvent event) {
+        if(FMLCommonHandler.instance().getEffectiveSide() == Side.CLIENT) {
+            return;
+        }
+
+        if (event.getSource().getTrueSource() instanceof EntityPlayer) {
+            EntityPlayer player = (EntityPlayer) event.getSource().getTrueSource();
+
+            if(player.getEntityId() != event.getEntity().getEntityId()) {
+                List<Entity> ee = new ArrayList<>();
+                ee.add(player);
+                ee.add(event.getEntity());
+                server.tryCreateEncounter(ee);
+            }
+        }
+    }
+
+    @SubscribeEvent
+    public void onEntityHurtByArrow(LivingHurtEvent event) {
+        if(FMLCommonHandler.instance().getEffectiveSide() == Side.CLIENT) {
+            return;
+        }
+
+        if (event.getSource().getImmediateSource() instanceof EntityArrow) {
+            EntityArrow arrow = (EntityArrow) event.getSource().getImmediateSource();
+
+            if (arrow.shootingEntity instanceof EntityPlayer) {
+                EntityPlayer player = (EntityPlayer) arrow.shootingEntity;
+
+                if(player.getEntityId() != event.getEntity().getEntityId()) {
+                    List<Entity> ee = new ArrayList<>();
+                    ee.add(player);
+                    ee.add(event.getEntity());
+                    server.tryCreateEncounter(ee);
+                }
+            }
+        }
+    }
+
+    @SubscribeEvent
     public void onLivingDamage(LivingAttackEvent event) {
         EntityLivingBase entity = event.getEntityLiving();
         TurnBased tb = entity.getCapability(TurnBasedProvider.TBC, null);
@@ -101,13 +153,22 @@ public class CommonProxy {
         }
 
         if(tb.isFrozen() && !tb.isDamageable()) {
-            event.setCanceled(true);
+           // event.setCanceled(true);
         }
     }
 
     @SubscribeEvent
     public void onWorldTick(TickEvent.WorldTickEvent event) {
         if (event.phase == TickEvent.Phase.START) {
+            if(server != null) {
+                for(Encounter i : server.activeEncounters) {
+                    if(i.world == event.world) {
+                        i.onTick();
+                    }
+                }
+            }
+
+
             for (Entity entity : event.world.loadedEntityList) {
                 update(entity);
             }

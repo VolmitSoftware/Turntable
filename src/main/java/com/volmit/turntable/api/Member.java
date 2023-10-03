@@ -4,8 +4,13 @@ import com.volmit.turntable.Turntable;
 import com.volmit.turntable.capability.TurnBased;
 import com.volmit.turntable.capability.TurnBasedProvider;
 import com.volmit.turntable.util.EntityUtil;
+import net.minecraft.client.Minecraft;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLiving;
+import net.minecraft.entity.ai.EntityAIHurtByTarget;
+import net.minecraft.entity.ai.EntityAIPanic;
+import net.minecraft.entity.ai.EntityAIRunAroundLikeCrazy;
+import net.minecraft.entity.passive.EntityAnimal;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.potion.PotionEffect;
 import net.minecraft.util.text.ITextComponent;
@@ -30,6 +35,13 @@ public class Member {
         if(entity instanceof EntityPlayer) {
             entity.sendMessage(ITextComponent.Serializer.jsonToComponent("{\"text\":\"It is not your turn.\",\"color\":\"red\"}"));
         }
+
+        if(entity instanceof EntityLiving){
+            EntityLiving l = (EntityLiving) entity;
+            l.setRevengeTarget(null);
+            l.tasks.taskEntries.clear();
+            l.targetTasks.taskEntries.clear();
+        }
     }
 
     public void onStartTurn(Encounter encounter){
@@ -48,7 +60,14 @@ public class Member {
     }
 
     public TurnBased getTB(){
-        return entity.getCapability(TurnBasedProvider.TBC, null);
+        TurnBased tb = entity.getCapability(TurnBasedProvider.TBC, null);
+
+        if(tb == null)
+        {
+            System.out.println("NO TB FOR " + entity);
+        }
+
+        return tb;
     }
 
     public void applyFire(){
@@ -72,6 +91,15 @@ public class Member {
 
                 i.getPotion().performEffect(l, i.getAmplifier());
             }
+        }
+    }
+
+    public void onTick() {
+        if(entity instanceof EntityAnimal){
+            EntityAnimal a = (EntityAnimal) entity;
+            a.setRevengeTarget(a);
+            a.tasks.addTask(1, new EntityAIPanic(a, 3d));
+
         }
     }
 }

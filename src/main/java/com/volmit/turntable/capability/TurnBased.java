@@ -29,7 +29,7 @@ public interface TurnBased {
     int getInitiative();
     void setInitiative(int initiative);
 
-    default void calculateInitiative(Entity entity){
+    default int calculateInitiative(Entity entity) {
         int base = 100;
 
         if(entity instanceof EntityLivingBase){
@@ -51,6 +51,8 @@ public interface TurnBased {
         if(entity instanceof EntityWither || entity instanceof EntityDragon) {
             base += 1000;
         }
+
+        return base;
     }
 
     default void updateTrackers(Entity entity) {
@@ -59,6 +61,10 @@ public interface TurnBased {
             p.entityId = entity.getEntityId();
             p.data = this;
             CommonProxy.network.sendToAllTracking(p, entity);
+            System.out.println("Update TB State: " + getTBState().name() + " AP: " + getActionPoints() + " D: " + isDamageable() + " I: " + getInitiative() + "" + " for " + entity.getClass().getSimpleName());
+        }
+        else {
+            System.out.println("No update!" + entity);
         }
     }
 
