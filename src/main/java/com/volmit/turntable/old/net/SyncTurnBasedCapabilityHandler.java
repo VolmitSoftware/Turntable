@@ -1,12 +1,10 @@
-package com.volmit.turntable.net;
+package com.volmit.turntable.old.net;
 
-import com.volmit.turntable.capability.TurnBased;
-import com.volmit.turntable.capability.TurnBasedProvider;
+import com.volmit.turntable.old.capability.TurnBased;
+import com.volmit.turntable.old.capability.TurnBasedProvider;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.util.text.ITextComponent;
 import net.minecraft.world.World;
 import net.minecraftforge.fml.common.network.simpleimpl.IMessage;
 import net.minecraftforge.fml.common.network.simpleimpl.IMessageHandler;

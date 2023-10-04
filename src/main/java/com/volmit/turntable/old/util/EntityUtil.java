@@ -1,6 +1,6 @@
-package com.volmit.turntable.util;
+package com.volmit.turntable.old.util;
 
-import com.volmit.turntable.capability.TurnBasedProvider;
+import com.volmit.turntable.old.capability.TurnBasedProvider;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.passive.EntityAnimal;
 import net.minecraft.potion.PotionEffect;

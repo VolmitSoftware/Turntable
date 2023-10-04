@@ -1,6 +1,6 @@
-package com.volmit.turntable.capability;
+package com.volmit.turntable.old.capability;
 
-import com.volmit.turntable.api.TBState;
+import com.volmit.turntable.old.api.TBState;
 import net.minecraft.nbt.NBTBase;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.EnumFacing;

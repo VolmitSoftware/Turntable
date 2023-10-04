@@ -1,4 +1,4 @@
-package com.volmit.turntable.capability;
+package com.volmit.turntable.old.capability;
 
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.EnumFacing;

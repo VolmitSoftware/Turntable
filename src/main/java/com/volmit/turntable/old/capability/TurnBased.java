@@ -1,20 +1,14 @@
-package com.volmit.turntable.capability;
+package com.volmit.turntable.old.capability;
 
-import com.volmit.turntable.api.TBState;
-import com.volmit.turntable.net.SyncTurnBasedCapabilityHandler;
-import com.volmit.turntable.net.SyncTurnBasedCapabilityPacket;
-import com.volmit.turntable.proxy.CommonProxy;
+import com.volmit.turntable.old.api.TBState;
+import com.volmit.turntable.old.net.SyncTurnBasedCapabilityPacket;
+import com.volmit.turntable.old.proxy.CommonProxy;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.boss.EntityDragon;
 import net.minecraft.entity.boss.EntityWither;
 import net.minecraft.entity.monster.EntityMob;
-import net.minecraft.entity.monster.EntitySkeleton;
 import net.minecraft.entity.passive.EntityAnimal;
-import net.minecraft.entity.passive.EntityCow;
-import net.minecraftforge.fml.common.network.PacketLoggingHandler;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
 
 public interface TurnBased {
     TBState getTBState();

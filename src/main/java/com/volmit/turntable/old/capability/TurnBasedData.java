@@ -1,6 +1,6 @@
-package com.volmit.turntable.capability;
+package com.volmit.turntable.old.capability;
 
-import com.volmit.turntable.api.TBState;
+import com.volmit.turntable.old.api.TBState;
 
 public class TurnBasedData implements TurnBased {
     private TBState state;

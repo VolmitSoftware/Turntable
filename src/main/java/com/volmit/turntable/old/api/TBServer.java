@@ -1,11 +1,9 @@
-package com.volmit.turntable.api;
+package com.volmit.turntable.old.api;
 
 import com.volmit.turntable.Turntable;
-import com.volmit.turntable.capability.TurnBasedProvider;
-import com.volmit.turntable.util.EntityUtil;
+import com.volmit.turntable.old.capability.TurnBasedProvider;
+import com.volmit.turntable.old.util.EntityUtil;
 import net.minecraft.entity.Entity;
-import net.minecraft.entity.item.EntityItem;
-import net.minecraft.entity.item.EntityXPOrb;
 import net.minecraft.world.World;
 
 import java.util.ArrayList;

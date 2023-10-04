@@ -1,8 +1,8 @@
-package com.volmit.turntable.net;
+package com.volmit.turntable.old.net;
 
-import com.volmit.turntable.api.TBState;
-import com.volmit.turntable.capability.TurnBased;
-import com.volmit.turntable.capability.TurnBasedData;
+import com.volmit.turntable.old.api.TBState;
+import com.volmit.turntable.old.capability.TurnBased;
+import com.volmit.turntable.old.capability.TurnBasedData;
 import io.netty.buffer.ByteBuf;
 import net.minecraftforge.fml.common.network.simpleimpl.IMessage;
 

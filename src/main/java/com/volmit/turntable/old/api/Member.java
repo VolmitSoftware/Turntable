@@ -1,20 +1,16 @@
-package com.volmit.turntable.api;
+package com.volmit.turntable.old.api;
 
 import com.volmit.turntable.Turntable;
-import com.volmit.turntable.capability.TurnBased;
-import com.volmit.turntable.capability.TurnBasedProvider;
-import com.volmit.turntable.util.EntityUtil;
-import net.minecraft.client.Minecraft;
+import com.volmit.turntable.old.capability.TurnBased;
+import com.volmit.turntable.old.capability.TurnBasedProvider;
+import com.volmit.turntable.old.util.EntityUtil;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLiving;
-import net.minecraft.entity.ai.EntityAIHurtByTarget;
 import net.minecraft.entity.ai.EntityAIPanic;
-import net.minecraft.entity.ai.EntityAIRunAroundLikeCrazy;
 import net.minecraft.entity.passive.EntityAnimal;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.potion.PotionEffect;
 import net.minecraft.util.text.ITextComponent;
-import net.minecraft.util.text.TextComponentBase;
 
 import java.util.ArrayList;
 
