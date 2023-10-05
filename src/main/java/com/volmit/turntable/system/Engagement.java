@@ -1,11 +1,17 @@
 package com.volmit.turntable.system;
 
 import com.volmit.turntable.Turntable;
+import com.volmit.turntable.net.EndTurn;
+import com.volmit.turntable.net.UpdateEngagementMembers;
+import com.volmit.turntable.proxy.CommonProxy;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.IProjectile;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.item.EntityXPOrb;
+import net.minecraft.entity.passive.EntityAnimal;
+import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.entity.projectile.EntityFireball;
+import net.minecraft.network.play.client.CPacketPlayer;
 import net.minecraft.world.World;
 
 import java.util.ArrayList;
@@ -53,6 +59,38 @@ public class Engagement {
         members.sort((o1, o2) -> o2.initiative - o1.initiative);
     }
 
+    public void updateTurnOrder(){
+        List<Entity> t = new ArrayList<>();
+        for(Member i : members) {
+            t.add(i.entity);
+        }
+
+        UpdateEngagementMembers.Packet p = new UpdateEngagementMembers.Packet();
+        p.turnOrder = t;
+
+        for(Member i : members) {
+            if(i.isPlayer()) {
+                CommonProxy.network.sendTo(p, (EntityPlayerMP) i.entity);
+            }
+        }
+    }
+
+    public double[] avgPos(){
+        double[] d = new double[]{0, 0, 0};
+
+        for(Member i : members) {
+            d[0] += i.entity.posX;
+            d[1] += i.entity.posY;
+            d[2] += i.entity.posZ;
+        }
+
+        d[0] /= members.size();
+        d[1] /= members.size();
+        d[2] /= members.size();
+
+        return d;
+    }
+
     public void onTick(){
         if(closed) {
             Turntable.logger.info("Ticked a closed engagement!");
@@ -61,11 +99,17 @@ public class Engagement {
 
         ticks++;
 
+        List<Member> rem = new ArrayList<>();
+
         for(int i = members.size()-1; i >= 0; i--) {
-            if(!members.get(i).isAlive() || members.get(i).entity.world != world) {
-                Member m = members.remove(i);
-                Turntable.logger.info("Removed a dead/teleported entity "+m.entity+" from engagement!");
+            if(!members.get(i).isAlive() || members.get(i).entity.world != world || members.get(i).distanceFromEngagement() > Turntable.ENCOUNTER_ESCAPE_RADIUS * Turntable.ENCOUNTER_ESCAPE_RADIUS) {
+                rem.add(members.get(i));
+                Turntable.logger.info("Removed a dead/escaped entity "+members.get(i).entity+" from engagement!");
             }
+        }
+
+        for(Member i : rem) {
+            removeMember(i);
         }
 
         if(members.size() < 2) {
@@ -133,6 +177,12 @@ public class Engagement {
     }
 
     public void addMember(Member member){
+        for(Member i : members) {
+            if(i.entity.getUniqueID().equals(member.entity.getUniqueID())) {
+                return;
+            }
+        }
+
         members.add(member);
         member.onJoin();
     }
@@ -141,6 +191,15 @@ public class Engagement {
         members.add(members.remove(0));
         ticks = 0;
         Turntable.logger.info("Engagement Turn: "+getActiveMember().entity);
+        updateTurnOrder();
+
+        String s = "";
+
+        for(Member i : members){
+            s+= i.entity.getEntityId() + " ";
+        }
+
+        Turntable.logger.info("Engagement Turn Order: "+s);
     }
 
     public static boolean canEngage(Entity e){

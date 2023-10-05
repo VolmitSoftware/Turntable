@@ -3,6 +3,7 @@ package com.volmit.turntable.system;
 import com.volmit.turntable.Turntable;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.passive.EntityAnimal;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.world.World;
 
 import java.util.ArrayList;
@@ -22,6 +23,29 @@ public class TurnBasedHost {
         }
 
         return 100;
+    }
+
+    public boolean consume(Entity entity, float ap) {
+        Member m = getMember(entity);
+
+        if(m != null) {
+            return m.consume(ap);
+        }
+
+        return true;
+    }
+
+    public Member getMember(Entity entity)
+    {
+        for(Engagement i : engagements) {
+            for(Member j : i.members) {
+                if(j.entity == entity) {
+                    return j;
+                }
+            }
+        }
+
+        return null;
     }
 
     public void onTick(World world){
@@ -47,6 +71,19 @@ public class TurnBasedHost {
         e.removeIf((i) -> getEngagement(i) != null || !Engagement.canEngage(i));
 
         if(e.size() < 2) {
+            return;
+        }
+        boolean hasPlayer = false;
+        for(Entity i : e)
+        {
+            if(i instanceof EntityPlayer)
+            {
+                hasPlayer = true;
+                break;
+            }
+        }
+
+        if(!hasPlayer){
             return;
         }
 
