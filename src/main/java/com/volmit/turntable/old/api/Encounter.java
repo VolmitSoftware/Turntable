@@ -106,7 +106,7 @@ public class Encounter {
     }
 
     private void addNearbyMembers() {
-        for(Entity i : EntityUtil.explode(getMembersAsEntities(), Turntable.ENCOUNTER_RADIUS)) {
+        for(Entity i : EntityUtil.explode(getMembersAsEntities(), Turntable.ENCOUNTER_ADD_RADIUS)) {
             if(server.getEncounter(i) != null) {
                 // TODO: MERGE ENCOUNTERS
                 continue;

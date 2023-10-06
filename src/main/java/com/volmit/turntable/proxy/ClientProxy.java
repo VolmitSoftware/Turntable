@@ -89,7 +89,7 @@ public class ClientProxy extends CommonProxy {
             int x = 0;
             int y = 0;
             int fillColor = 0xFFFFFFFF;
-            Gui.drawRect(x, y, (int) (x + (w * (ap / 3F))), barHeight, fillColor);
+            Gui.drawRect(x, y, (int) (x + (w * (ap / Turntable.AP_PER_TURN))), barHeight, fillColor);
         }
     }
 

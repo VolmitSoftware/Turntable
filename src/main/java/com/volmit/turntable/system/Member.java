@@ -18,7 +18,9 @@ import net.minecraft.potion.PotionEffect;
 import net.minecraft.util.DamageSource;
 import net.minecraft.util.text.TextComponentString;
 import net.minecraftforge.event.entity.living.LivingAttackEvent;
+import net.minecraftforge.event.entity.living.LivingDestroyBlockEvent;
 import net.minecraftforge.event.entity.living.LivingHealEvent;
+import net.minecraftforge.event.world.BlockEvent;
 
 import java.util.Iterator;
 import java.util.UUID;
@@ -38,12 +40,13 @@ public class Member {
     public float actionPoints;
     public boolean active = false;
     public boolean environmentDamageGate = false;
+    public float jumpFactor = 0.2f;
 
     public Member(Engagement engagement, Entity entity, int initiative) {
         this.engagement = engagement;
         this.entity = entity;
         this.initiative = initiative;
-        this.actionPoints = Turntable.ACTION_POINTS;
+        this.actionPoints = Turntable.AP_PER_TURN;
         this.lx = entity.posX;
         this.ly = entity.posY;
         this.lz = entity.posZ;
@@ -111,6 +114,9 @@ public class Member {
         actionPoints = 0;
         uap();
         freeze();
+        lx = entity.posX;
+        ly = entity.posY;
+        lz = entity.posZ;
     }
 
     public void onOtherBeginTurn(Member member) {
@@ -120,12 +126,15 @@ public class Member {
     }
 
     public void onBeginTurn() {
-        actionPoints = Turntable.ACTION_POINTS;
+        actionPoints = Turntable.AP_PER_TURN;
         uap();
         if (isPlayer()) {
             entity.sendMessage(new TextComponentString("It's Your Turn!"));
         }
 
+        lx = entity.posX;
+        ly = entity.posY;
+        lz = entity.posZ;
         unfreeze();
         active = true;
 
@@ -169,7 +178,7 @@ public class Member {
         double distance = Math.sqrt(Math.pow(px - lx, 2) + Math.pow(py - ly, 2) + Math.pow(pz - lz, 2));
 
         if (distance > 0.01) {
-            if (!consume((float) Turntable.MOVEMENT_COST)) {
+            if (!consume((float) Turntable.AP_COST_MOVEMENT)) {
                 onOutOfAP();
             }
         }
@@ -281,11 +290,16 @@ public class Member {
             l.targetTasks.taskEntries.clear();
             l.tasks.taskEntries.clear();
         }
+
+        if(isLiving()){
+            living().setJumping(false);
+        }
     }
 
     public void unfreeze() {
         if (isLiving()) {
             unfreeze(living());
+            living().jumpMovementFactor = jumpFactor;
         }
     }
 
@@ -336,6 +350,8 @@ public class Member {
         }
 
         if (isLiving()) {
+            jumpFactor = living().jumpMovementFactor;
+            living().jumpMovementFactor = 0f;
             try {
                 if (!living().getEntityAttribute(SharedMonsterAttributes.MOVEMENT_SPEED).hasModifier(speedModifier())) {
                     living().getEntityAttribute(SharedMonsterAttributes.MOVEMENT_SPEED)
@@ -374,5 +390,55 @@ public class Member {
 
     public boolean shouldHeal(LivingHealEvent event) {
         return active;
+    }
+
+    public void onJump() {
+        if(active){
+            consume(Turntable.AP_COST_JUMP);
+        }
+    }
+
+    public void onDestroyBlock(LivingDestroyBlockEvent event) {
+        if(!active){
+            event.setCanceled(true);
+        } else
+        {
+            if(!consume(Turntable.AP_COST_BLOCK_DESTROY)){
+                event.setCanceled(true);
+            }
+        }
+    }
+
+    public void onPlaceBlock(BlockEvent.EntityPlaceEvent event) {
+        if(!active){
+            event.setCanceled(true);
+        } else
+        {
+            if(!consume(Turntable.AP_COST_BLOCK_PLACE)){
+                event.setCanceled(true);
+            }
+        }
+    }
+
+    public void onMultiPlace(BlockEvent.EntityMultiPlaceEvent event) {
+        if(!active){
+            event.setCanceled(true);
+        } else
+        {
+            if(!consume(Turntable.AP_COST_BLOCK_PLACE*2)){
+                event.setCanceled(true);
+            }
+        }
+    }
+
+    public void onBreakBlock(BlockEvent.BreakEvent event) {
+        if(!active){
+            event.setCanceled(true);
+        } else
+        {
+            if(!consume(Turntable.AP_COST_BLOCK_BREAK)){
+                event.setCanceled(true);
+            }
+        }
     }
 }

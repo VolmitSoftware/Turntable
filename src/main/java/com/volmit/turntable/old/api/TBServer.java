@@ -50,7 +50,7 @@ public class TBServer {
 
         entities.removeIf((i) -> i.getCapability(TurnBasedProvider.TBC, null) == null);
         entities.removeIf((i) -> getEncounter(i) != null);
-        entities = EntityUtil.explode(entities, Turntable.ENCOUNTER_RADIUS);
+        entities = EntityUtil.explode(entities, Turntable.ENCOUNTER_ADD_RADIUS);
         entities.removeIf((i) -> i.getCapability(TurnBasedProvider.TBC, null) == null);
         entities.removeIf((i) -> getEncounter(i) != null);
 

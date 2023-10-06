@@ -1,9 +1,11 @@
 package com.volmit.turntable.system;
 
 import com.volmit.turntable.Turntable;
+import jdk.nashorn.internal.ir.Block;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.passive.EntityAnimal;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 
 import java.util.ArrayList;
@@ -15,6 +17,28 @@ public class TurnBasedHost {
 
     public TurnBasedHost(){
         engagements = new ArrayList<>();
+    }
+
+    public Engagement getInField(double x, double y, double z){
+        return getEngagement(Turntable.ENCOUNTER_FIELD_RADIUS, x, y, z);
+    }
+
+    public Engagement getInField(BlockPos p){
+        return getEngagement(Turntable.ENCOUNTER_FIELD_RADIUS, p.getX(), p.getY(), p.getZ());
+    }
+
+    public Engagement getEngagement(double threshold, BlockPos pos){
+        return getEngagement(threshold, pos.getX(), pos.getY(), pos.getZ());
+    }
+
+    public Engagement getEngagement(double threshold, double x, double y, double z){
+        for(Engagement i : engagements){
+            if(i.distanceFromEngagement(x, y, z) <= threshold * threshold){
+                return i;
+            }
+        }
+
+        return null;
     }
 
     public int getInitiative(Entity entity) {

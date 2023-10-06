@@ -1,17 +1,14 @@
 package com.volmit.turntable.system;
 
 import com.volmit.turntable.Turntable;
-import com.volmit.turntable.net.EndTurn;
 import com.volmit.turntable.net.UpdateEngagementMembers;
 import com.volmit.turntable.proxy.CommonProxy;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.IProjectile;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.item.EntityXPOrb;
-import net.minecraft.entity.passive.EntityAnimal;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.entity.projectile.EntityFireball;
-import net.minecraft.network.play.client.CPacketPlayer;
 import net.minecraft.world.World;
 
 import java.util.ArrayList;
@@ -47,7 +44,7 @@ public class Engagement {
 
     public void addNearby(){
         for(Member i : new ArrayList<>(members)) {
-            for(Entity j : i.entity.world.getEntitiesWithinAABB(Entity.class, i.entity.getEntityBoundingBox().grow(Turntable.ENCOUNTER_RADIUS))) {
+            for(Entity j : i.entity.world.getEntitiesWithinAABB(Entity.class, i.entity.getEntityBoundingBox().grow(Turntable.ENCOUNTER_ADD_RADIUS))) {
                 if(canEngage(j) && host.getEngagement(j) == null) {
                     addMember(new Member(this, j, host.getInitiative(j)));
                 }
@@ -91,6 +88,24 @@ public class Engagement {
         return d;
     }
 
+    public double distanceFromEngagement(double x, double y, double z) {
+        double[] d = avgPos();
+        double dist = Math.pow(d[0] - x, 2) + Math.pow(d[1] - y, 2) + Math.pow(d[2] - z, 2);
+
+        for (Member i : members) {
+            d[0] = i.entity.posX;
+            d[1] = i.entity.posY;
+            d[2] = i.entity.posZ;
+            double dx = Math.pow(d[0] - x, 2) + Math.pow(d[1] - y, 2) + Math.pow(d[2] - z, 2);
+
+            if (dx < dist) {
+                dist = dx;
+            }
+        }
+
+        return dist;
+    }
+
     public void onTick(){
         if(closed) {
             Turntable.logger.info("Ticked a closed engagement!");
@@ -102,7 +117,7 @@ public class Engagement {
         List<Member> rem = new ArrayList<>();
 
         for(int i = members.size()-1; i >= 0; i--) {
-            if(!members.get(i).isAlive() || members.get(i).entity.world != world || members.get(i).distanceFromEngagement() > Turntable.ENCOUNTER_ESCAPE_RADIUS * Turntable.ENCOUNTER_ESCAPE_RADIUS) {
+            if(!members.get(i).isAlive() || members.get(i).entity.world != world || members.get(i).distanceFromEngagement() > Turntable.ENCOUNTER_FIELD_RADIUS * Turntable.ENCOUNTER_FIELD_RADIUS) {
                 rem.add(members.get(i));
                 Turntable.logger.info("Removed a dead/escaped entity "+members.get(i).entity+" from engagement!");
             }
