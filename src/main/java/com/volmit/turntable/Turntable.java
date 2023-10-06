@@ -17,6 +17,16 @@ public class Turntable {
     public static final float AP_COST_BLOCK_DESTROY = 0.25f;
     public static final float AP_COST_BLOCK_BREAK = 0.5f;
     public static final float AP_COST_BLOCK_PLACE = 0.5f;
+    public static final float AP_COST_ENDER_TELEPORT = 1f;
+    public static final float AP_COST_CONSUME = 0.5f;
+    public static final float AP_COST_MOUNT = 0.5f;
+    public static final float AP_COST_PICKUP = 0.1f;
+    public static final float AP_COST_INTERACT_ENTITY = 0.5f;
+    public static final float AP_COST_OPEN_CONTAINER = 0.25f;
+    public static final float AP_COST_RIGHT_CLICK_BLOCK = 0.25f;
+    public static final float AP_COST_RIGHT_CLICK_ITEM = 0.1f;
+    public static final float AP_COST_CLOSE_CONTAINER = 0.25f;
+    public static final float AP_COST_HEAL = 0.1f;
     public static final float AP_COST_ATTACK = 1f;
     public static final float AP_COST_JUMP = 0.08f;
     public static final float AP_PER_TURN = 3f;

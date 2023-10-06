@@ -40,16 +40,16 @@ public class ClientProxy extends CommonProxy {
         registerRenderers();
     }
 
-    public void onEngagementClosed(){
+    public void onEngagementClosed() {
         turnOrder = null;
         ap = -1;
     }
 
-    public void onAPUpdate(float ap){
+    public void onAPUpdate(float ap) {
         this.ap = ap;
     }
 
-    public void onEngagementUpdate(List<Entity> entities){
+    public void onEngagementUpdate(List<Entity> entities) {
         turnOrder = entities;
     }
 
@@ -63,10 +63,8 @@ public class ClientProxy extends CommonProxy {
     public void onKeyInput(InputEvent.KeyInputEvent event) {
         if (K_END_TURN.isPressed()) {
             endTurnPressed = true;
-        }
-
-        else {
-            if(endTurnPressed){
+        } else {
+            if (endTurnPressed) {
                 CommonProxy.network.sendToServer(new EndTurn.Packet());
             }
             endTurnPressed = false;
@@ -81,7 +79,7 @@ public class ClientProxy extends CommonProxy {
 
         Minecraft mc = Minecraft.getMinecraft();
 
-        if(turnOrder != null && ap > 0 && mc.currentScreen == null) {
+        if (turnOrder != null && ap > 0 && mc.currentScreen == null) {
             int w = event.getResolution().getScaledWidth();
             int h = event.getResolution().getScaledHeight();
             int barWidth = w;  // Bar width in pixels
@@ -93,7 +91,7 @@ public class ClientProxy extends CommonProxy {
         }
     }
 
-    @SubscribeEvent(priority = EventPriority.HIGHEST )
+    @SubscribeEvent(priority = EventPriority.HIGHEST)
     public void onFOVUpdate(FOVUpdateEvent event) {
         if (event.getEntity().getEntityAttribute(SharedMonsterAttributes.MOVEMENT_SPEED).hasModifier(Member.speedModifier())) {
             float originalFOV = event.getFov();

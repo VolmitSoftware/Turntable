@@ -7,30 +7,24 @@ import net.minecraftforge.fml.common.ObfuscationReflectionHelper;
 import java.lang.reflect.Field;
 
 public class EntityUtil {
-    public static int getPotionEffectDuration(PotionEffect i)
-    {
+    public static int getPotionEffectDuration(PotionEffect i) {
         try {
             Field d = ObfuscationReflectionHelper.findField(PotionEffect.class, "duration");
             d.setAccessible(true);
             return d.getInt(i);
-        }
-
-        catch(Throwable e) {
+        } catch (Throwable e) {
             e.printStackTrace();
         }
 
         return 0;
     }
 
-    public static void setPotionEffectDuration(PotionEffect i, int ticks)
-    {
+    public static void setPotionEffectDuration(PotionEffect i, int ticks) {
         try {
             Field d = ObfuscationReflectionHelper.findField(PotionEffect.class, "duration");
             d.setAccessible(true);
             d.setInt(i, ticks);
-        }
-
-        catch(Throwable e) {
+        } catch (Throwable e) {
             e.printStackTrace();
         }
     }
@@ -40,20 +34,19 @@ public class EntityUtil {
             Field f = ObfuscationReflectionHelper.findField(Entity.class, "fire");
             f.setAccessible(true);
             return f.getInt(entity);
-        } catch(Throwable e) {
+        } catch (Throwable e) {
             e.printStackTrace();
         }
 
         return 0;
     }
 
-    public static void setFireTicks(Entity entity, int ticks)
-    {
+    public static void setFireTicks(Entity entity, int ticks) {
         try {
             Field f = ObfuscationReflectionHelper.findField(Entity.class, "fire");
             f.setAccessible(true);
             f.setInt(entity, ticks);
-        } catch(Throwable e) {
+        } catch (Throwable e) {
             e.printStackTrace();
         }
     }

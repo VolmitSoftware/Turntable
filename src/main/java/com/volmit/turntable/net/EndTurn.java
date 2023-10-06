@@ -12,7 +12,7 @@ public class EndTurn implements IMessageHandler<EndTurn.Packet, IMessage> {
     public IMessage onMessage(Packet message, MessageContext ctx) {
         Engagement e = Turntable.proxy.host.getEngagement(ctx.getServerHandler().player);
 
-        if(e != null && e.getActiveMember().entity.getUniqueID().equals(ctx.getServerHandler().player.getUniqueID())) {
+        if (e != null && e.getActiveMember().entity.getUniqueID().equals(ctx.getServerHandler().player.getUniqueID())) {
             e.nextTurn();
         }
 
@@ -20,7 +20,8 @@ public class EndTurn implements IMessageHandler<EndTurn.Packet, IMessage> {
     }
 
     public static class Packet implements IMessage {
-        public Packet() { }  // Empty constructor for Forge
+        public Packet() {
+        }  // Empty constructor for Forge
 
         @Override
         public void fromBytes(ByteBuf buf) {

@@ -1,16 +1,18 @@
 [
-{
-  "modid": "turntable",
-  "name": "Turntable",
-  "description": "Turn Based Minecraft",
-  "version": "${version}",
-  "mcversion": "${mcversion}",
-  "url": "",
-  "updateUrl": "",
-  "authorList": ["cyberpwn"],
-  "credits": "Larian Studios",
-  "logoFile": "",
-  "screenshots": [],
-  "dependencies": []
-}
+  {
+    "modid": "turntable",
+    "name": "Turntable",
+    "description": "Turn Based Minecraft",
+    "version": "${version}",
+    "mcversion": "${mcversion}",
+    "url": "",
+    "updateUrl": "",
+    "authorList": [
+      "cyberpwn"
+    ],
+    "credits": "Larian Studios",
+    "logoFile": "",
+    "screenshots": [],
+    "dependencies": []
+  }
 ]

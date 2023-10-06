@@ -17,9 +17,11 @@ import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.potion.PotionEffect;
 import net.minecraft.util.DamageSource;
 import net.minecraft.util.text.TextComponentString;
-import net.minecraftforge.event.entity.living.LivingAttackEvent;
-import net.minecraftforge.event.entity.living.LivingDestroyBlockEvent;
-import net.minecraftforge.event.entity.living.LivingHealEvent;
+import net.minecraftforge.event.entity.EntityMountEvent;
+import net.minecraftforge.event.entity.living.*;
+import net.minecraftforge.event.entity.player.EntityItemPickupEvent;
+import net.minecraftforge.event.entity.player.PlayerContainerEvent;
+import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.event.world.BlockEvent;
 
 import java.util.Iterator;
@@ -178,7 +180,7 @@ public class Member {
         double distance = Math.sqrt(Math.pow(px - lx, 2) + Math.pow(py - ly, 2) + Math.pow(pz - lz, 2));
 
         if (distance > 0.01) {
-            if (!consume((float) Turntable.AP_COST_MOVEMENT)) {
+            if (!consume(Turntable.AP_COST_MOVEMENT)) {
                 onOutOfAP();
             }
         }
@@ -291,7 +293,7 @@ public class Member {
             l.tasks.taskEntries.clear();
         }
 
-        if(isLiving()){
+        if (isLiving()) {
             living().setJumping(false);
         }
     }
@@ -388,57 +390,109 @@ public class Member {
         }
     }
 
-    public boolean shouldHeal(LivingHealEvent event) {
-        return active;
+    public void onHeal(LivingHealEvent event) {
+        if (!active || !consume(Turntable.AP_COST_HEAL * event.getAmount())) {
+            event.setCanceled(true);
+        }
     }
 
     public void onJump() {
-        if(active){
+        if (active) {
             consume(Turntable.AP_COST_JUMP);
         }
     }
 
     public void onDestroyBlock(LivingDestroyBlockEvent event) {
-        if(!active){
+        if (!consume(Turntable.AP_COST_BLOCK_DESTROY)) {
             event.setCanceled(true);
-        } else
-        {
-            if(!consume(Turntable.AP_COST_BLOCK_DESTROY)){
-                event.setCanceled(true);
-            }
         }
     }
 
     public void onPlaceBlock(BlockEvent.EntityPlaceEvent event) {
-        if(!active){
+        if (!consume(Turntable.AP_COST_BLOCK_PLACE)) {
             event.setCanceled(true);
-        } else
-        {
-            if(!consume(Turntable.AP_COST_BLOCK_PLACE)){
-                event.setCanceled(true);
-            }
         }
     }
 
     public void onMultiPlace(BlockEvent.EntityMultiPlaceEvent event) {
-        if(!active){
+        if (!consume(Turntable.AP_COST_BLOCK_PLACE * 2)) {
             event.setCanceled(true);
-        } else
-        {
-            if(!consume(Turntable.AP_COST_BLOCK_PLACE*2)){
-                event.setCanceled(true);
-            }
         }
     }
 
     public void onBreakBlock(BlockEvent.BreakEvent event) {
-        if(!active){
+        if (!consume(Turntable.AP_COST_BLOCK_BREAK)) {
             event.setCanceled(true);
-        } else
-        {
-            if(!consume(Turntable.AP_COST_BLOCK_BREAK)){
-                event.setCanceled(true);
-            }
+        }
+    }
+
+    public void onConsumed(LivingEntityUseItemEvent.Finish event) {
+        consume(Turntable.AP_COST_CONSUME);
+    }
+
+    public void onConsumeStarted(LivingEntityUseItemEvent.Start event) {
+        if (!active || actionPoints < Turntable.AP_COST_CONSUME) {
+            event.setCanceled(true);
+        }
+    }
+
+    public void onConsumeTick(LivingEntityUseItemEvent.Tick event) {
+        if (!active || actionPoints <= Turntable.AP_COST_CONSUME) {
+            event.setCanceled(true);
+        }
+    }
+
+    public void onMount(EntityMountEvent event) {
+        if (!active || !consume(Turntable.AP_COST_MOUNT)) {
+            event.setCanceled(true);
+        }
+    }
+
+    public void onPickup(EntityItemPickupEvent event) {
+        if (!active || !consume(Turntable.AP_COST_PICKUP)) {
+            event.setCanceled(true);
+        }
+    }
+
+    public void onCloseContainer(PlayerContainerEvent.Close event) {
+        if (!consume(Turntable.AP_COST_CLOSE_CONTAINER)) {
+            event.setCanceled(true);
+        }
+    }
+
+    public void onOpenContainer(PlayerContainerEvent.Open event) {
+        if (!consume(Turntable.AP_COST_OPEN_CONTAINER)) {
+            event.setCanceled(true);
+        }
+    }
+
+    public void onInteractEntity(PlayerInteractEvent.EntityInteract event) {
+        if (!consume(Turntable.AP_COST_INTERACT_ENTITY)) {
+            event.setCanceled(true);
+        }
+    }
+
+    public void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
+        if (!consume(Turntable.AP_COST_RIGHT_CLICK_BLOCK)) {
+            event.setCanceled(true);
+        }
+    }
+
+    public void onRightClickItem(PlayerInteractEvent.RightClickItem event) {
+        if (!consume(Turntable.AP_COST_RIGHT_CLICK_ITEM)) {
+            event.setCanceled(true);
+        }
+    }
+
+    public void onLeftClickBlock(PlayerInteractEvent.LeftClickBlock event) {
+        if (!active || actionPoints < Turntable.AP_COST_BLOCK_BREAK) {
+            event.setCanceled(true);
+        }
+    }
+
+    public void onEnderTeleport(EnderTeleportEvent event) {
+        if (!consume(Turntable.AP_COST_ENDER_TELEPORT)) {
+            event.setCanceled(true);
         }
     }
 }
