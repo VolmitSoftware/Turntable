@@ -4,6 +4,7 @@ import com.volmit.turntable.Turntable;
 import com.volmit.turntable.net.EngagementClosed;
 import com.volmit.turntable.net.UpdateAP;
 import com.volmit.turntable.proxy.CommonProxy;
+import com.volmit.turntable.util.EntityUtil;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLiving;
 import net.minecraft.entity.EntityLivingBase;
@@ -13,10 +14,14 @@ import net.minecraft.entity.ai.attributes.AttributeModifier;
 import net.minecraft.entity.passive.EntityAnimal;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.potion.PotionEffect;
+import net.minecraft.util.DamageSource;
 import net.minecraft.util.text.TextComponentString;
+import net.minecraftforge.event.entity.living.LivingAttackEvent;
+import net.minecraftforge.event.entity.living.LivingHealEvent;
 
+import java.util.Iterator;
 import java.util.UUID;
-import java.util.logging.Logger;
 
 public class Member {
     public static final UUID SPEED_MODIFIER = UUID.nameUUIDFromBytes("turntable.speed".getBytes());
@@ -32,8 +37,9 @@ public class Member {
     public int initiative;
     public float actionPoints;
     public boolean active = false;
+    public boolean environmentDamageGate = false;
 
-    public Member(Engagement engagement, Entity entity, int initiative){
+    public Member(Engagement engagement, Entity entity, int initiative) {
         this.engagement = engagement;
         this.entity = entity;
         this.initiative = initiative;
@@ -44,15 +50,15 @@ public class Member {
     }
 
     public boolean consume(float ap) {
-        if(!active){
+        if (!active) {
             return false;
         }
 
         ap = Math.abs(ap);
-        if(actionPoints >= ap) {
+        if (ap > 0) {
             actionPoints -= ap;
 
-            if(actionPoints < 0.1f) {
+            if (actionPoints < 0.1f) {
                 actionPoints = 0;
             }
 
@@ -63,33 +69,34 @@ public class Member {
         return false;
     }
 
-    public boolean isPlayer(){
+    public boolean isPlayer() {
         return entity instanceof EntityPlayer;
     }
 
-    public boolean isAlive(){
+    public boolean isAlive() {
         return !entity.isDead;
     }
 
-    public void onJoin(){
-        if(isPlayer()){
+    public void onJoin() {
+        if (isPlayer()) {
             entity.sendMessage(new TextComponentString("Engagement started!"));
         }
 
         freeze();
     }
 
-    public void onLeave(){
-        if(isPlayer()){
+    public void onLeave() {
+        if (isPlayer()) {
             entity.sendMessage(new TextComponentString("Engagement ended!"));
             CommonProxy.network.sendTo(new EngagementClosed.Packet(), (EntityPlayerMP) entity);
         }
         unfreeze();
+        environmentDamageGate = false;
+        active = false;
     }
 
     public void onEndTurn() {
-        if(entity instanceof EntityLiving)
-        {
+        if (entity instanceof EntityLiving) {
             EntityLiving l = (EntityLiving) entity;
             l.setRevengeTarget(null);
             l.tasks.taskEntries.clear();
@@ -97,7 +104,7 @@ public class Member {
         }
 
         active = false;
-        if(isPlayer()){
+        if (isPlayer()) {
             entity.sendMessage(new TextComponentString("Turn ended!"));
         }
 
@@ -107,45 +114,48 @@ public class Member {
     }
 
     public void onOtherBeginTurn(Member member) {
-        if(isPlayer()){
-            entity.sendMessage(new TextComponentString("It's "+member.entity.getName()+"'s Turn!"));
+        if (isPlayer()) {
+            entity.sendMessage(new TextComponentString("It's " + member.entity.getName() + "'s Turn!"));
         }
     }
 
     public void onBeginTurn() {
         actionPoints = Turntable.ACTION_POINTS;
         uap();
-        if(isPlayer()){
+        if (isPlayer()) {
             entity.sendMessage(new TextComponentString("It's Your Turn!"));
         }
 
         unfreeze();
         active = true;
 
-        if(entity instanceof EntityAnimal){
+        if (entity instanceof EntityAnimal) {
             EntityAnimal a = (EntityAnimal) entity;
             a.setRevengeTarget(a);
             a.tasks.addTask(1, new EntityAIPanic(a, 3d));
         }
+
+        triggerEffects();
+        environmentDamageGate = true;
     }
 
-    private void uap(){
-        if(isPlayer()){
+    private void uap() {
+        if (isPlayer()) {
             UpdateAP.Packet a = new UpdateAP.Packet();
             a.ap = actionPoints;
             CommonProxy.network.sendTo(a, (EntityPlayerMP) entity);
         }
     }
 
-    public boolean isLiving(){
+    public boolean isLiving() {
         return entity instanceof EntityLivingBase;
     }
 
-    public EntityLivingBase living(){
+    public EntityLivingBase living() {
         return (EntityLivingBase) entity;
     }
 
-    public void onOutOfAP(){
+    public void onOutOfAP() {
         freeze();
     }
 
@@ -158,19 +168,23 @@ public class Member {
         lz = entity.posZ;
         double distance = Math.sqrt(Math.pow(px - lx, 2) + Math.pow(py - ly, 2) + Math.pow(pz - lz, 2));
 
-        if(distance > 0.01) {
-            if(!consume((float)Turntable.MOVEMENT_COST)) {
+        if (distance > 0.01) {
+            if (!consume((float) Turntable.MOVEMENT_COST)) {
                 onOutOfAP();
             }
         }
+
+        if (actionPoints <= 0 && active) {
+            freeze();
+        }
     }
 
-    public double distanceFromEngagement(){
+    public double distanceFromEngagement() {
         double[] d = engagement.avgPos();
         double dist = Math.pow(d[0] - entity.posX, 2) + Math.pow(d[1] - entity.posY, 2) + Math.pow(d[2] - entity.posZ, 2);
 
-        for(Member i : engagement.members) {
-            if(i.entity.getEntityId() == entity.getEntityId()) {
+        for (Member i : engagement.members) {
+            if (i.entity.getEntityId() == entity.getEntityId()) {
                 continue;
             }
 
@@ -179,7 +193,7 @@ public class Member {
             d[2] = i.entity.posZ;
             double dx = Math.pow(d[0] - entity.posX, 2) + Math.pow(d[1] - entity.posY, 2) + Math.pow(d[2] - entity.posZ, 2);
 
-            if(dx < dist){
+            if (dx < dist) {
                 dist = dx;
             }
         }
@@ -188,123 +202,177 @@ public class Member {
     }
 
     public void onTick(int ticks) {
+        if (!active) {
+            onInactiveTick(ticks);
+        }
 
+        pausePotionEffects();
+        pauseFire();
     }
 
-    public void unfreeze(){
-        if(isLiving()) {
+    public void triggerEffects() {
+        triggerFire();
+        triggerPotionEffects();
+    }
+
+    public boolean shouldTakeDamage(LivingAttackEvent src) {
+        if (src.getSource().getTrueSource() == null) {
+            if (environmentDamageGate) {
+                environmentDamageGate = false;
+                return true;
+            }
+
+            return false;
+        }
+
+        return true;
+    }
+
+    public void triggerFire() {
+        EntityUtil.setFireTicks(entity, Math.max(EntityUtil.getFireTicks(entity) - Turntable.TURN_TIME, 0));
+
+        if (isLiving() && EntityUtil.getFireTicks(entity) > 0) {
+            environmentDamageGate = true;
+            living().attackEntityFrom(DamageSource.IN_FIRE, 1f);
+        }
+    }
+
+    public void triggerPotionEffects() {
+        if (isLiving()) {
+            Iterator<PotionEffect> it = living().getActivePotionEffects().iterator();
+            while (it.hasNext()) {
+                PotionEffect i = it.next();
+                int duration = i.getDuration() - Turntable.TURN_TIME;
+
+                if (duration <= 0) {
+                    it.remove();
+                    continue;
+                }
+
+                EntityUtil.setPotionEffectDuration(i, duration);
+                environmentDamageGate = true;
+                i.performEffect(living());
+                environmentDamageGate = false;
+            }
+        }
+    }
+
+    public void pausePotionEffects() {
+        if (isLiving()) {
+            for (PotionEffect i : living().getActivePotionEffects()) {
+                EntityUtil.setPotionEffectDuration(i, i.getDuration() + 1);
+            }
+        }
+    }
+
+    public void pauseFire() {
+        if (isLiving()) {
+            int fire = EntityUtil.getFireTicks(entity);
+
+            if (fire > 0) {
+                EntityUtil.setFireTicks(entity, fire + 1);
+            }
+        }
+    }
+
+    public void onInactiveTick(int ticks) {
+        if (entity instanceof EntityLiving) {
+            EntityLiving l = (EntityLiving) entity;
+            l.targetTasks.taskEntries.clear();
+            l.tasks.taskEntries.clear();
+        }
+    }
+
+    public void unfreeze() {
+        if (isLiving()) {
             unfreeze(living());
         }
     }
 
     public static void unfreeze(EntityLivingBase living) {
-            try
-            {
-                living.getEntityAttribute(SharedMonsterAttributes.MOVEMENT_SPEED).removeModifier(SPEED_MODIFIER);
-            }
+        try {
+            living.getEntityAttribute(SharedMonsterAttributes.MOVEMENT_SPEED).removeModifier(SPEED_MODIFIER);
+        } catch (Throwable e) {
 
-            catch(Throwable e)
-            {
+        }
+        try {
+            living.getEntityAttribute(SharedMonsterAttributes.FLYING_SPEED).removeModifier(FLY_SPEED_MODIFIER);
+        } catch (Throwable e) {
 
-            }
-            try
-            {
-                living.getEntityAttribute(SharedMonsterAttributes.FLYING_SPEED).removeModifier(FLY_SPEED_MODIFIER);}
+        }
+        try {
+            living.getEntityAttribute(SharedMonsterAttributes.ATTACK_SPEED).removeModifier(ATTACK_SPEED_MODIFIER);
+        } catch (Throwable e) {
 
-            catch(Throwable e)
-            {
+        }
+        try {
+            living.getEntityAttribute(SharedMonsterAttributes.ATTACK_DAMAGE).removeModifier(ATTACK_MODIFIER);
+        } catch (Throwable e) {
 
-            }
-            try
-            {
-                living.getEntityAttribute(SharedMonsterAttributes.ATTACK_SPEED).removeModifier(ATTACK_SPEED_MODIFIER);}
-
-            catch(Throwable e)
-            {
-
-            }
-            try
-            {
-                living.getEntityAttribute(SharedMonsterAttributes.ATTACK_DAMAGE).removeModifier(ATTACK_MODIFIER);}
-
-            catch(Throwable e)
-            {
-
-            }
+        }
     }
 
-    public static AttributeModifier speedModifier(){
+    public static AttributeModifier speedModifier() {
         return new AttributeModifier(SPEED_MODIFIER, "Turntable Speed", -1024D, 0);
     }
 
-    public static AttributeModifier flySpeedModifier(){
+    public static AttributeModifier flySpeedModifier() {
         return new AttributeModifier(FLY_SPEED_MODIFIER, "Turntable Fly Speed", -1024D, 0);
     }
 
-    public static AttributeModifier attackSpeedModifier(){
+    public static AttributeModifier attackSpeedModifier() {
         return new AttributeModifier(ATTACK_SPEED_MODIFIER, "Turntable Attack Speed", -1024D, 0);
     }
 
-    public static AttributeModifier attackModifier(){
+    public static AttributeModifier attackModifier() {
         return new AttributeModifier(ATTACK_MODIFIER, "Turntable Attack Damage", -2048D, 0);
     }
 
     public void freeze() {
-        if(entity instanceof EntityLiving)
-        {
+        if (entity instanceof EntityLiving) {
             EntityLiving l = (EntityLiving) entity;
             l.tasks.taskEntries.clear();
             l.targetTasks.taskEntries.clear();
         }
 
-        if(isLiving())
-        { try
-            {
-            if(!living().getEntityAttribute(SharedMonsterAttributes.MOVEMENT_SPEED).hasModifier(speedModifier())) {
-                living().getEntityAttribute(SharedMonsterAttributes.MOVEMENT_SPEED)
-                    .applyModifier(speedModifier());
+        if (isLiving()) {
+            try {
+                if (!living().getEntityAttribute(SharedMonsterAttributes.MOVEMENT_SPEED).hasModifier(speedModifier())) {
+                    living().getEntityAttribute(SharedMonsterAttributes.MOVEMENT_SPEED)
+                            .applyModifier(speedModifier());
+                }
+            } catch (Throwable e) {
+
+            }
+
+            try {
+                if (!living().getEntityAttribute(SharedMonsterAttributes.FLYING_SPEED).hasModifier(flySpeedModifier())) {
+                    living().getEntityAttribute(SharedMonsterAttributes.FLYING_SPEED)
+                            .applyModifier(flySpeedModifier());
+                }
+            } catch (Throwable e) {
+
+            }
+            try {
+                if (!living().getEntityAttribute(SharedMonsterAttributes.ATTACK_SPEED).hasModifier(attackSpeedModifier())) {
+                    living().getEntityAttribute(SharedMonsterAttributes.ATTACK_SPEED)
+                            .applyModifier(attackSpeedModifier());
+                }
+            } catch (Throwable e) {
+
+            }
+            try {
+                if (!living().getEntityAttribute(SharedMonsterAttributes.ATTACK_DAMAGE).hasModifier(attackModifier())) {
+                    living().getEntityAttribute(SharedMonsterAttributes.ATTACK_DAMAGE)
+                            .applyModifier(attackModifier());
+                }
+            } catch (Throwable e) {
+
             }
         }
-
-        catch(Throwable e)
-        {
-
-        }
-
-           try
-           {
-               if(!living().getEntityAttribute(SharedMonsterAttributes.FLYING_SPEED).hasModifier(flySpeedModifier())) {
-                   living().getEntityAttribute(SharedMonsterAttributes.FLYING_SPEED)
-                       .applyModifier(flySpeedModifier());
-               }
-           }
-
-           catch(Throwable e)
-           {
-
-           }
-            try
-            {
-            if(!living().getEntityAttribute(SharedMonsterAttributes.ATTACK_SPEED).hasModifier(attackSpeedModifier())) {
-                living().getEntityAttribute(SharedMonsterAttributes.ATTACK_SPEED)
-                    .applyModifier(attackSpeedModifier());
-            } }
-
-           catch(Throwable e)
-        {
-
-        }
-        try
-        {
-            if(!living().getEntityAttribute(SharedMonsterAttributes.ATTACK_DAMAGE).hasModifier(attackModifier())) {
-                living().getEntityAttribute(SharedMonsterAttributes.ATTACK_DAMAGE)
-                    .applyModifier(attackModifier());
-            } }
-
-           catch(Throwable e)
-    {
-
     }
-        }
+
+    public boolean shouldHeal(LivingHealEvent event) {
+        return active;
     }
 }

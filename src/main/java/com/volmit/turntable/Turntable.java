@@ -14,8 +14,8 @@ import java.awt.event.KeyEvent;
 
 @Mod(modid = Turntable.MODID, name = Turntable.NAME, version = Turntable.VERSION)
 public class Turntable {
-    public static final double ENCOUNTER_RADIUS = 8;
-    public static final double ENCOUNTER_ESCAPE_RADIUS = 32;
+    public static final double ENCOUNTER_RADIUS = 4;
+    public static final double ENCOUNTER_ESCAPE_RADIUS = 24;
     public static final double MOVEMENT_COST = 0.01;
     public static final int TURN_TIME = 100;
     public static final float ACTION_POINTS = 3;

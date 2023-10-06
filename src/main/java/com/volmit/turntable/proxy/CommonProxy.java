@@ -14,6 +14,7 @@ import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.living.LivingAttackEvent;
 import net.minecraftforge.event.entity.living.LivingEntityUseItemEvent;
 import net.minecraftforge.event.entity.living.LivingEvent;
+import net.minecraftforge.event.entity.living.LivingHealEvent;
 import net.minecraftforge.event.entity.player.ArrowLooseEvent;
 import net.minecraftforge.fml.common.FMLCommonHandler;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
@@ -54,6 +55,18 @@ public class CommonProxy {
         network.registerMessage(new EngagementClosed(), EngagementClosed.Packet.class, packetId++, Side.CLIENT);
     }
 
+
+    @SubscribeEvent
+    public void onEntityMove(LivingHealEvent event) {
+        Member m = host.getMember(event.getEntity());
+
+        if(m != null){
+            if(!m.shouldHeal(event)){
+                event.setCanceled(true);
+            }
+        }
+    }
+
     @SubscribeEvent
     public void onEntityMove(LivingEvent.LivingUpdateEvent event) {
         if(FMLCommonHandler.instance().getEffectiveSide() == Side.CLIENT) {
@@ -76,18 +89,28 @@ public class CommonProxy {
             return;
         }
 
-        if(!host.consume(event.getSource().getTrueSource(), 1f)) {
+        if(event.getSource().getTrueSource() != null && !host.consume(event.getSource().getTrueSource(), 1f)) {
             event.setCanceled(true);
+            return;
         }
 
-        if (event.getSource().getTrueSource() instanceof EntityPlayer) {
+        Member m = host.getMember(event.getEntity());
+
+        if(m != null){
+            if(!m.shouldTakeDamage(event)){
+                event.setCanceled(true);
+                return;
+            }
+        }
+
+        if (event.getSource().getTrueSource() != null && event.getSource().getTrueSource() instanceof EntityPlayer) {
             EntityPlayer player = (EntityPlayer) event.getSource().getTrueSource();
 
             if(player.getEntityId() != event.getEntity().getEntityId()) {
                 host.createEngagement(player, event.getEntity());
             }
         } else if (event.getEntity() instanceof EntityPlayer && event.getSource().getTrueSource() != null) {
-            if(event.getSource().getTrueSource().getEntityId() != event.getEntity().getEntityId()) {
+            if(event.getSource().getTrueSource() != null && event.getSource().getTrueSource().getEntityId() != event.getEntity().getEntityId()) {
                 host.createEngagement(event.getSource().getTrueSource(), event.getEntity());
             }
         }
