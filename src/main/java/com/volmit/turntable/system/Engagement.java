@@ -189,6 +189,10 @@ public class Engagement {
     public void removeMember(Member member) {
         members.remove(member);
         member.onLeave();
+
+        for(Member i : members){
+            i.onOtherLeft(member);
+        }
     }
 
     public void addMember(Member member) {

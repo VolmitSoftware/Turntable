@@ -276,19 +276,6 @@ public class CommonProxy {
     }
 
     @SubscribeEvent
-    public void on(LivingSpawnEvent event) {
-        if (FMLCommonHandler.instance().getEffectiveSide() == Side.CLIENT) {
-            return;
-        }
-
-        Engagement e = host.getEngagement(Turntable.ENCOUNTER_FIELD_RADIUS, event.getX(), event.getY(), event.getZ());
-
-        if (e != null) {
-            event.setCanceled(true);
-        }
-    }
-
-    @SubscribeEvent
     public void on(TickEvent.WorldTickEvent event) {
         if (event.phase == TickEvent.Phase.START) {
             host.onTick(event.world);

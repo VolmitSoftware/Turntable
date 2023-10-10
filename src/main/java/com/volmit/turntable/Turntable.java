@@ -26,11 +26,16 @@ public class Turntable {
     public static final float AP_COST_RIGHT_CLICK_BLOCK = 0.25f;
     public static final float AP_COST_RIGHT_CLICK_ITEM = 0.1f;
     public static final float AP_COST_CLOSE_CONTAINER = 0.25f;
-    public static final float AP_COST_HEAL = 0.1f;
+    public static final float AP_COST_HEAL = 0.05f;
     public static final float AP_COST_ATTACK = 1f;
     public static final float AP_COST_JUMP = 0.08f;
-    public static final float AP_PER_TURN = 3f;
+    public static final float AP_PER_TURN = 5f;
     public static final int TURN_TIME = 100;
+    public static final int FROZEN_AUTO_ADVANCE_TIME = 50;
+    public static final int MAX_TURN_TIME = 1200;
+    public static final float CAMERA_TRACKING_SPEED = 0.03f;
+    public static final int MOUSE_BREAK_OUT_THRESHOLD = 10;
+    public static final int MOUSE_BREAK_OUT_TICKS = 50;
     @SidedProxy(clientSide = "com.volmit.turntable.proxy.ClientProxy", serverSide = "com.volmit.turntable.proxy.CommonProxy")
     public static CommonProxy proxy;
     public static final String MODID = "turntable";

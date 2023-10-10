@@ -37,6 +37,17 @@ public class UpdateEngagementMembers implements IMessageHandler<UpdateEngagement
                     e.printStackTrace();
                 }
             }
+
+            if(turnOrder != null && !turnOrder.isEmpty()){
+                if(!Minecraft.getMinecraft().player.getUniqueID().equals(turnOrder.get(0).getUniqueID())){
+                    ClientProxy.targetEntity = turnOrder.get(0);
+                }
+                else{
+                    ClientProxy.targetEntity = null;
+                }
+            }else {
+                ClientProxy.targetEntity = null;
+            }
         }
 
         @Override

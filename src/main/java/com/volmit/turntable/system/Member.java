@@ -5,26 +5,30 @@ import com.volmit.turntable.net.EngagementClosed;
 import com.volmit.turntable.net.UpdateAP;
 import com.volmit.turntable.proxy.CommonProxy;
 import com.volmit.turntable.util.EntityUtil;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityLiving;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.entity.SharedMonsterAttributes;
+import net.minecraft.entity.*;
+import net.minecraft.entity.ai.EntityAIAttackMelee;
 import net.minecraft.entity.ai.EntityAIPanic;
 import net.minecraft.entity.ai.attributes.AttributeModifier;
+import net.minecraft.entity.monster.EntityMob;
+import net.minecraft.entity.monster.EntityZombie;
 import net.minecraft.entity.passive.EntityAnimal;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.potion.PotionEffect;
 import net.minecraft.util.DamageSource;
 import net.minecraft.util.text.TextComponentString;
+import net.minecraft.util.text.translation.I18n;
 import net.minecraftforge.event.entity.EntityMountEvent;
 import net.minecraftforge.event.entity.living.*;
 import net.minecraftforge.event.entity.player.EntityItemPickupEvent;
 import net.minecraftforge.event.entity.player.PlayerContainerEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.event.world.BlockEvent;
+import org.lwjgl.Sys;
 
+import javax.sound.midi.SysexMessage;
 import java.util.Iterator;
+import java.util.Random;
 import java.util.UUID;
 
 public class Member {
@@ -33,6 +37,7 @@ public class Member {
     public static final UUID ATTACK_MODIFIER = UUID.nameUUIDFromBytes("turntable.attack".getBytes());
     public static final UUID FLY_SPEED_MODIFIER = UUID.nameUUIDFromBytes("turntable.flyspeed".getBytes());
 
+    public int frozenTicks;
     public double lx;
     public double ly;
     public double lz;
@@ -42,16 +47,116 @@ public class Member {
     public float actionPoints;
     public boolean active = false;
     public boolean environmentDamageGate = false;
-    public float jumpFactor = 0.2f;
+    public float jumpFactor;
+    public boolean frozen;
+    public int turnTicks;
 
     public Member(Engagement engagement, Entity entity, int initiative) {
         this.engagement = engagement;
+        this.frozen = false;
         this.entity = entity;
         this.initiative = initiative;
         this.actionPoints = Turntable.AP_PER_TURN;
         this.lx = entity.posX;
         this.ly = entity.posY;
         this.lz = entity.posZ;
+        this.frozenTicks = 0;
+        this.jumpFactor = 0.2f;
+        this.turnTicks = 0;
+    }
+
+    public Member nearestPlayer(){
+        double distance = Turntable.ENCOUNTER_FIELD_RADIUS * Turntable.ENCOUNTER_FIELD_RADIUS;
+        Member nearest = null;
+
+        for(Member i : engagement.members){
+            if(i == this){
+                continue;
+            }
+
+            if(i.isPlayer()){
+                if(i.entity.getDistanceSq(entity) < distance){
+                    distance = i.entity.getDistanceSq(entity);
+                    nearest = i;
+                }
+            }
+        }
+
+        return nearest;
+    }
+
+    public Member nearestMember(){
+        double distance = Turntable.ENCOUNTER_FIELD_RADIUS * Turntable.ENCOUNTER_FIELD_RADIUS;
+        Member nearest = null;
+
+        for(Member i : engagement.members){
+            if(i == this){
+                continue;
+            }
+
+            if(i.entity.getDistanceSq(entity) < distance){
+                distance = i.entity.getDistanceSq(entity);
+                nearest = i;
+            }
+        }
+
+        return nearest;
+    }
+
+    public static String getTypeName(Entity entity){
+        String s = EntityList.getEntityString(entity);
+
+        if (s == null) {
+            s = "generic";
+        }
+
+        return I18n.translateToLocal("entity." + s + ".name");
+    }
+
+    public static String getName(Entity entity){
+        if(entity instanceof EntityPlayer){
+            return entity.getName();
+        }
+
+        if(entity.hasCustomName()) {
+            return entity.getName();
+        }
+
+        String typeName = getTypeName(entity);
+        Random r1 = new Random(entity.getUniqueID().getLeastSignificantBits());
+        Random r2 = new Random(entity.getUniqueID().getMostSignificantBits());
+        double importance = r1.nextDouble() * r2.nextDouble() * r1.nextDouble() * r2.nextDouble();
+        String n = EntityUtil.randomName(r1);
+        boolean f = r1.nextBoolean();
+        importance -= 0.15;
+
+        if(importance > 0){
+            if(f){
+                n = EntityUtil.randomPrefix(r2.nextBoolean() ? r2 : r1) + " " + n;
+            }
+
+            else {
+                n = n + " " + EntityUtil.randomSuffix(r1.nextBoolean() ? r1 : r2);
+            }
+        }
+
+        importance -= 0.25;
+
+        if(importance > 0){
+            if(f){
+                n = n + " " + EntityUtil.randomSuffix(r1.nextBoolean() ? r1 : r2);
+            }
+
+            else {
+                n = EntityUtil.randomPrefix(r2.nextBoolean() ? r2 : r1) + " " + n;
+            }
+        }
+
+        return n;
+    }
+
+    public String getName(){
+        return getName(entity);
     }
 
     public boolean consume(float ap) {
@@ -88,6 +193,7 @@ public class Member {
         }
 
         freeze();
+        uap();
     }
 
     public void onLeave() {
@@ -101,13 +207,6 @@ public class Member {
     }
 
     public void onEndTurn() {
-        if (entity instanceof EntityLiving) {
-            EntityLiving l = (EntityLiving) entity;
-            l.setRevengeTarget(null);
-            l.tasks.taskEntries.clear();
-            l.targetTasks.taskEntries.clear();
-        }
-
         active = false;
         if (isPlayer()) {
             entity.sendMessage(new TextComponentString("Turn ended!"));
@@ -115,19 +214,27 @@ public class Member {
 
         actionPoints = 0;
         uap();
+        frozenTicks = 0;
         freeze();
         lx = entity.posX;
         ly = entity.posY;
         lz = entity.posZ;
     }
 
+    public void onOtherLeft(Member member){
+        uap();
+    }
+
     public void onOtherBeginTurn(Member member) {
         if (isPlayer()) {
-            entity.sendMessage(new TextComponentString("It's " + member.entity.getName() + "'s Turn!"));
+            entity.sendMessage(new TextComponentString("It's " + member.getName() + "'s Turn!"));
         }
+
+        uap();
     }
 
     public void onBeginTurn() {
+        turnTicks = 0;
         actionPoints = Turntable.AP_PER_TURN;
         uap();
         if (isPlayer()) {
@@ -138,12 +245,24 @@ public class Member {
         ly = entity.posY;
         lz = entity.posZ;
         unfreeze();
+        frozenTicks = 0;
         active = true;
 
         if (entity instanceof EntityAnimal) {
             EntityAnimal a = (EntityAnimal) entity;
             a.setRevengeTarget(a);
-            a.tasks.addTask(1, new EntityAIPanic(a, 3d));
+            a.tasks.addTask(1, new EntityAIPanic(a, 2.15d));
+        } else if(entity instanceof EntityMob){
+            EntityMob m = (EntityMob) entity;
+            Member t = nearestPlayer();
+
+            if(t != null){
+                //m.setAttackTarget(t.living());
+                //m.setRevengeTarget(t.living());
+                System.out.println("Set revenge target to " + t.getName());
+            } else {
+                System.out.println("No target found");
+            }
         }
 
         triggerEffects();
@@ -187,6 +306,22 @@ public class Member {
 
         if (actionPoints <= 0 && active) {
             freeze();
+        }
+
+        if(frozen && active){
+            frozenTicks++;
+
+            if(frozenTicks > Turntable.FROZEN_AUTO_ADVANCE_TIME){
+                engagement.nextTurn();
+                entity.sendMessage(new TextComponentString("You were frozen for too long!"));
+            }
+        } else{
+            frozenTicks = 0;
+        }
+
+        if(active && turnTicks++ > Turntable.MAX_TURN_TIME){
+            engagement.nextTurn();
+            entity.sendMessage(new TextComponentString("Turn time exceeded!"));
         }
     }
 
@@ -289,8 +424,6 @@ public class Member {
     public void onInactiveTick(int ticks) {
         if (entity instanceof EntityLiving) {
             EntityLiving l = (EntityLiving) entity;
-            l.targetTasks.taskEntries.clear();
-            l.tasks.taskEntries.clear();
         }
 
         if (isLiving()) {
@@ -299,9 +432,16 @@ public class Member {
     }
 
     public void unfreeze() {
+        frozen = false;
+        frozenTicks = 0;
         if (isLiving()) {
             unfreeze(living());
             living().jumpMovementFactor = jumpFactor;
+        }
+
+        if(entity instanceof EntityLiving){
+            EntityLiving l = (EntityLiving) entity;
+            l.setNoAI(false);
         }
     }
 
@@ -345,10 +485,10 @@ public class Member {
     }
 
     public void freeze() {
+        frozen = true;
         if (entity instanceof EntityLiving) {
             EntityLiving l = (EntityLiving) entity;
-            l.tasks.taskEntries.clear();
-            l.targetTasks.taskEntries.clear();
+            l.setNoAI(true);
         }
 
         if (isLiving()) {
