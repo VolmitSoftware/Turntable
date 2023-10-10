@@ -252,17 +252,6 @@ public class Member {
             EntityAnimal a = (EntityAnimal) entity;
             a.setRevengeTarget(a);
             a.tasks.addTask(1, new EntityAIPanic(a, 2.15d));
-        } else if(entity instanceof EntityMob){
-            EntityMob m = (EntityMob) entity;
-            Member t = nearestPlayer();
-
-            if(t != null){
-                //m.setAttackTarget(t.living());
-                //m.setRevengeTarget(t.living());
-                System.out.println("Set revenge target to " + t.getName());
-            } else {
-                System.out.println("No target found");
-            }
         }
 
         triggerEffects();
