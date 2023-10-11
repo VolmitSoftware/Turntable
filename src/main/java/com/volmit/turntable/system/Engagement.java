@@ -38,8 +38,8 @@ public class Engagement {
 
         addNearby();
         sortByInitiative();
-
         Turntable.logger.info("An engagement has started between " + members.size() + " entities.");
+        updateTurnOrder();
     }
 
     public void addNearby() {
@@ -204,6 +204,7 @@ public class Engagement {
 
         members.add(member);
         member.onJoin();
+        updateTurnOrder();
     }
 
     public void nextTurn() {
