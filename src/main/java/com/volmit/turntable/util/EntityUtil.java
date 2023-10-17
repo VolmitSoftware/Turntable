@@ -64,7 +64,7 @@ public class EntityUtil {
             d.setAccessible(true);
             return d.getInt(i);
         } catch (Throwable e) {
-            e.printStackTrace();
+            //e.printStackTrace();
         }
 
         return 0;
@@ -76,7 +76,7 @@ public class EntityUtil {
             d.setAccessible(true);
             d.setInt(i, ticks);
         } catch (Throwable e) {
-            e.printStackTrace();
+            //e.printStackTrace();
         }
     }
 
@@ -86,7 +86,7 @@ public class EntityUtil {
             f.setAccessible(true);
             return f.getInt(entity);
         } catch (Throwable e) {
-            e.printStackTrace();
+            //e.printStackTrace();
         }
 
         return 0;
@@ -98,7 +98,7 @@ public class EntityUtil {
             f.setAccessible(true);
             f.setInt(entity, ticks);
         } catch (Throwable e) {
-            e.printStackTrace();
+            //e.printStackTrace();
         }
     }
 }

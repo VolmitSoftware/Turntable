@@ -1,6 +1,7 @@
 package com.volmit.turntable.system;
 
 import com.volmit.turntable.Turntable;
+import com.volmit.turntable.config.ConfigHandler;
 import com.volmit.turntable.net.EngagementClosed;
 import com.volmit.turntable.net.UpdateAP;
 import com.volmit.turntable.proxy.CommonProxy;
@@ -9,6 +10,7 @@ import net.minecraft.entity.*;
 import net.minecraft.entity.ai.EntityAIAttackMelee;
 import net.minecraft.entity.ai.EntityAIPanic;
 import net.minecraft.entity.ai.attributes.AttributeModifier;
+import net.minecraft.entity.boss.EntityDragon;
 import net.minecraft.entity.monster.EntityMob;
 import net.minecraft.entity.monster.EntityZombie;
 import net.minecraft.entity.passive.EntityAnimal;
@@ -18,14 +20,18 @@ import net.minecraft.init.SoundEvents;
 import net.minecraft.potion.PotionEffect;
 import net.minecraft.util.DamageSource;
 import net.minecraft.util.SoundEvent;
+import net.minecraft.util.math.RayTraceResult;
+import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.text.TextComponentString;
 import net.minecraft.util.text.translation.I18n;
+import net.minecraft.world.World;
 import net.minecraftforge.event.entity.EntityMountEvent;
 import net.minecraftforge.event.entity.living.*;
 import net.minecraftforge.event.entity.player.EntityItemPickupEvent;
 import net.minecraftforge.event.entity.player.PlayerContainerEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.event.world.BlockEvent;
+import net.minecraftforge.fml.common.event.FMLInterModComms;
 import org.lwjgl.Sys;
 
 import javax.sound.midi.SysexMessage;
@@ -58,7 +64,7 @@ public class Member {
         this.frozen = false;
         this.entity = entity;
         this.initiative = initiative;
-        this.actionPoints = Turntable.AP_PER_TURN;
+        this.actionPoints = ConfigHandler.AP_PER_TURN;
         this.lx = entity.posX;
         this.ly = entity.posY;
         this.lz = entity.posZ;
@@ -68,7 +74,7 @@ public class Member {
     }
 
     public Member nearestPlayer(){
-        double distance = Turntable.ENCOUNTER_FIELD_RADIUS * Turntable.ENCOUNTER_FIELD_RADIUS;
+        double distance = ConfigHandler.ENCOUNTER_FIELD_RADIUS * ConfigHandler.ENCOUNTER_FIELD_RADIUS;
         Member nearest = null;
 
         for(Member i : engagement.members){
@@ -88,7 +94,7 @@ public class Member {
     }
 
     public Member nearestMember(){
-        double distance = Turntable.ENCOUNTER_FIELD_RADIUS * Turntable.ENCOUNTER_FIELD_RADIUS;
+        double distance = ConfigHandler.ENCOUNTER_FIELD_RADIUS * ConfigHandler.ENCOUNTER_FIELD_RADIUS;
         Member nearest = null;
 
         for(Member i : engagement.members){
@@ -106,7 +112,18 @@ public class Member {
     }
 
     public static String getTypeName(Entity entity){
-        String s = EntityList.getEntityString(entity);
+        String s = null;
+
+        if(entity != null){
+            try
+            {
+                s = EntityList.getEntityString(entity);
+            }
+
+            catch(Throwable e){
+
+            }
+        }
 
         if (s == null) {
             s = "generic";
@@ -116,6 +133,10 @@ public class Member {
     }
 
     public static String getName(Entity entity){
+        if(entity == null){
+            return "Entity";
+        }
+
         if(entity instanceof EntityPlayer){
             return entity.getName();
         }
@@ -237,7 +258,7 @@ public class Member {
 
     public void onBeginTurn() {
         turnTicks = 0;
-        actionPoints = Turntable.AP_PER_TURN;
+        actionPoints = ConfigHandler.AP_PER_TURN * (isEnderDragon() ? 2.5f : 1f);
         uap();
         if (isPlayer()) {
             entity.sendMessage(new TextComponentString("It's Your Turn!"));
@@ -290,7 +311,7 @@ public class Member {
         double distance = Math.sqrt(Math.pow(px - lx, 2) + Math.pow(py - ly, 2) + Math.pow(pz - lz, 2));
 
         if (distance > 0.01) {
-            if (!consume(Turntable.AP_COST_MOVEMENT)) {
+            if (!consume(ConfigHandler.AP_COST_MOVEMENT)) {
                 onOutOfAP();
             }
         }
@@ -302,7 +323,7 @@ public class Member {
         if(frozen && active){
             frozenTicks++;
 
-            if(frozenTicks > Turntable.FROZEN_AUTO_ADVANCE_TIME){
+            if(frozenTicks > ConfigHandler.FROZEN_AUTO_ADVANCE_TIME){
                 engagement.nextTurn();
                 entity.sendMessage(new TextComponentString("You were frozen for too long!"));
             }
@@ -310,7 +331,7 @@ public class Member {
             frozenTicks = 0;
         }
 
-        if(active && turnTicks++ > Turntable.MAX_TURN_TIME){
+        if(active && turnTicks++ > ConfigHandler.MAX_TURN_TIME){
             engagement.nextTurn();
             entity.sendMessage(new TextComponentString("Turn time exceeded!"));
         }
@@ -319,8 +340,12 @@ public class Member {
     public double distanceFromEngagement() {
         double[] d = engagement.avgPos();
         double dist = Math.pow(d[0] - entity.posX, 2) + Math.pow(d[1] - entity.posY, 2) + Math.pow(d[2] - entity.posZ, 2);
-
+        boolean dragon = false;
         for (Member i : engagement.members) {
+            if(i.isEnderDragon()){
+                dragon = true;
+            }
+
             if (i.entity.getEntityId() == entity.getEntityId()) {
                 continue;
             }
@@ -335,7 +360,7 @@ public class Member {
             }
         }
 
-        return dist;
+        return dist * (dragon ? 0.05 : 1);
     }
 
     public void onTick(int ticks) {
@@ -352,6 +377,23 @@ public class Member {
         triggerPotionEffects();
     }
 
+    public static boolean hasLOS(Entity a, Entity b, int maxDistance) {
+        if (a == b) {
+            return true;
+        }
+
+        World world = a.world;
+        Vec3d eyesPosA = a.getPositionEyes(1.0F);
+        Vec3d eyesPosB = b.getPositionEyes(1.0F);
+
+        if (eyesPosA.distanceTo(eyesPosB) > maxDistance) {
+            return false;
+        }
+
+        RayTraceResult rayTrace = world.rayTraceBlocks(eyesPosA, eyesPosB);
+        return rayTrace == null || rayTrace.entityHit == b;
+    }
+
     public boolean shouldTakeDamage(LivingAttackEvent src) {
         if (src.getSource().getTrueSource() == null) {
             if (environmentDamageGate) {
@@ -366,7 +408,7 @@ public class Member {
     }
 
     public void triggerFire() {
-        EntityUtil.setFireTicks(entity, Math.max(EntityUtil.getFireTicks(entity) - Turntable.TURN_TIME, 0));
+        EntityUtil.setFireTicks(entity, Math.max(EntityUtil.getFireTicks(entity) - ConfigHandler.TURN_TIME, 0));
 
         if (isLiving() && EntityUtil.getFireTicks(entity) > 0) {
             environmentDamageGate = true;
@@ -379,7 +421,7 @@ public class Member {
             Iterator<PotionEffect> it = living().getActivePotionEffects().iterator();
             while (it.hasNext()) {
                 PotionEffect i = it.next();
-                int duration = i.getDuration() - Turntable.TURN_TIME;
+                int duration = i.getDuration() - ConfigHandler.TURN_TIME;
 
                 if (duration <= 0) {
                     it.remove();
@@ -521,108 +563,119 @@ public class Member {
         }
     }
 
+    public boolean isEnderDragon(){
+        return entity instanceof EntityDragon;
+    }
+
     public void onHeal(LivingHealEvent event) {
-        if (!active || !consume(Turntable.AP_COST_HEAL * event.getAmount())) {
+        if(isEnderDragon()){
+            if (!active) {
+                event.setCanceled(true);
+            }
+            return;
+        }
+
+        if (!active || !consume(ConfigHandler.AP_COST_HEAL * event.getAmount())) {
             event.setCanceled(true);
         }
     }
 
     public void onJump() {
         if (active) {
-            consume(Turntable.AP_COST_JUMP);
+            consume(ConfigHandler.AP_COST_JUMP);
         }
     }
 
     public void onDestroyBlock(LivingDestroyBlockEvent event) {
-        if (!consume(Turntable.AP_COST_BLOCK_DESTROY)) {
+        if (!consume(ConfigHandler.AP_COST_BLOCK_DESTROY)) {
             event.setCanceled(true);
         }
     }
 
     public void onPlaceBlock(BlockEvent.EntityPlaceEvent event) {
-        if (!consume(Turntable.AP_COST_BLOCK_PLACE)) {
+        if (!consume(ConfigHandler.AP_COST_BLOCK_PLACE)) {
             event.setCanceled(true);
         }
     }
 
     public void onMultiPlace(BlockEvent.EntityMultiPlaceEvent event) {
-        if (!consume(Turntable.AP_COST_BLOCK_PLACE * 2)) {
+        if (!consume(ConfigHandler.AP_COST_BLOCK_PLACE * 2)) {
             event.setCanceled(true);
         }
     }
 
     public void onBreakBlock(BlockEvent.BreakEvent event) {
-        if (!consume(Turntable.AP_COST_BLOCK_BREAK)) {
+        if (!consume(ConfigHandler.AP_COST_BLOCK_BREAK)) {
             event.setCanceled(true);
         }
     }
 
     public void onConsumed(LivingEntityUseItemEvent.Finish event) {
-        consume(Turntable.AP_COST_CONSUME);
+        consume(ConfigHandler.AP_COST_CONSUME);
     }
 
     public void onConsumeStarted(LivingEntityUseItemEvent.Start event) {
-        if (!active || actionPoints < Turntable.AP_COST_CONSUME) {
+        if (!active || actionPoints < ConfigHandler.AP_COST_CONSUME) {
             event.setCanceled(true);
         }
     }
 
     public void onConsumeTick(LivingEntityUseItemEvent.Tick event) {
-        if (!active || actionPoints <= Turntable.AP_COST_CONSUME) {
+        if (!active || actionPoints <= ConfigHandler.AP_COST_CONSUME) {
             event.setCanceled(true);
         }
     }
 
     public void onMount(EntityMountEvent event) {
-        if (!active || !consume(Turntable.AP_COST_MOUNT)) {
+        if (!active || !consume(ConfigHandler.AP_COST_MOUNT)) {
             event.setCanceled(true);
         }
     }
 
     public void onPickup(EntityItemPickupEvent event) {
-        if (!active || !consume(Turntable.AP_COST_PICKUP)) {
+        if (!active || !consume(ConfigHandler.AP_COST_PICKUP)) {
             event.setCanceled(true);
         }
     }
 
     public void onCloseContainer(PlayerContainerEvent.Close event) {
-        if (!consume(Turntable.AP_COST_CLOSE_CONTAINER)) {
+        if (!consume(ConfigHandler.AP_COST_CLOSE_CONTAINER)) {
             event.setCanceled(true);
         }
     }
 
     public void onOpenContainer(PlayerContainerEvent.Open event) {
-        if (!consume(Turntable.AP_COST_OPEN_CONTAINER)) {
+        if (!consume(ConfigHandler.AP_COST_OPEN_CONTAINER)) {
             event.setCanceled(true);
         }
     }
 
     public void onInteractEntity(PlayerInteractEvent.EntityInteract event) {
-        if (!consume(Turntable.AP_COST_INTERACT_ENTITY)) {
+        if (!consume(ConfigHandler.AP_COST_INTERACT_ENTITY)) {
             event.setCanceled(true);
         }
     }
 
     public void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
-        if (!consume(Turntable.AP_COST_RIGHT_CLICK_BLOCK)) {
+        if (!consume(ConfigHandler.AP_COST_RIGHT_CLICK_BLOCK)) {
             event.setCanceled(true);
         }
     }
 
     public void onRightClickItem(PlayerInteractEvent.RightClickItem event) {
-        if (!consume(Turntable.AP_COST_RIGHT_CLICK_ITEM)) {
+        if (!consume(ConfigHandler.AP_COST_RIGHT_CLICK_ITEM)) {
             event.setCanceled(true);
         }
     }
 
     public void onLeftClickBlock(PlayerInteractEvent.LeftClickBlock event) {
-        if (!active || actionPoints < Turntable.AP_COST_BLOCK_BREAK) {
+        if (!active || actionPoints < ConfigHandler.AP_COST_BLOCK_BREAK) {
             event.setCanceled(true);
         }
     }
 
     public void onEnderTeleport(EnderTeleportEvent event) {
-        if (!consume(Turntable.AP_COST_ENDER_TELEPORT)) {
+        if (!consume(ConfigHandler.AP_COST_ENDER_TELEPORT)) {
             event.setCanceled(true);
         }
     }

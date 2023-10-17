@@ -1,9 +1,11 @@
 package com.volmit.turntable.system;
 
 import com.volmit.turntable.Turntable;
+import com.volmit.turntable.config.ConfigHandler;
 import com.volmit.turntable.net.UpdateEngagementMembers;
 import com.volmit.turntable.proxy.CommonProxy;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityAreaEffectCloud;
 import net.minecraft.entity.IProjectile;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.item.EntityXPOrb;
@@ -44,8 +46,8 @@ public class Engagement {
 
     public void addNearby() {
         for (Member i : new ArrayList<>(members)) {
-            for (Entity j : i.entity.world.getEntitiesWithinAABB(Entity.class, i.entity.getEntityBoundingBox().grow(Turntable.ENCOUNTER_ADD_RADIUS))) {
-                if (canEngage(j) && host.getEngagement(j) == null) {
+            for (Entity j : i.entity.world.getEntitiesWithinAABB(Entity.class, i.entity.getEntityBoundingBox().grow(ConfigHandler.ENCOUNTER_ADD_RADIUS))) {
+                if (canEngage(j) && host.getEngagement(j) == null && Member.hasLOS(i.entity, j, (int)ConfigHandler.ENCOUNTER_ADD_RADIUS)) {
                     addMember(new Member(this, j, host.getInitiative(j)));
                 }
             }
@@ -117,7 +119,7 @@ public class Engagement {
         List<Member> rem = new ArrayList<>();
 
         for (int i = members.size() - 1; i >= 0; i--) {
-            if (!members.get(i).isAlive() || members.get(i).entity.world != world || members.get(i).distanceFromEngagement() > Turntable.ENCOUNTER_FIELD_RADIUS * Turntable.ENCOUNTER_FIELD_RADIUS) {
+            if (!members.get(i).isAlive() || members.get(i).entity.world != world || members.get(i).distanceFromEngagement() > ConfigHandler.ENCOUNTER_FIELD_RADIUS * ConfigHandler.ENCOUNTER_FIELD_RADIUS) {
                 rem.add(members.get(i));
                 Turntable.logger.info("Removed a dead/escaped entity " + members.get(i).entity + " from engagement!");
             }
@@ -145,7 +147,7 @@ public class Engagement {
             }
         }
 
-        if (ticks > Turntable.TURN_TIME) {
+        if (ticks > ConfigHandler.TURN_TIME) {
             if (!getActiveMember().isPlayer()) {
                 nextTurn();
             }
@@ -169,7 +171,9 @@ public class Engagement {
             i.onTick(ticks);
         }
 
-        addNearby();
+        if(ticks % 20 == 0){
+            addNearby();
+        }
     }
 
     public void close() {
@@ -223,6 +227,6 @@ public class Engagement {
     }
 
     public static boolean canEngage(Entity e) {
-        return !(e instanceof EntityItem || e instanceof EntityXPOrb || e instanceof EntityFireball || e instanceof IProjectile);
+        return !(e instanceof EntityItem || e instanceof EntityXPOrb || e instanceof EntityFireball || e instanceof IProjectile || e instanceof EntityAreaEffectCloud);
     }
 }

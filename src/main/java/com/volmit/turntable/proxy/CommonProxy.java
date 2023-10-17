@@ -1,6 +1,7 @@
 package com.volmit.turntable.proxy;
 
 import com.volmit.turntable.Turntable;
+import com.volmit.turntable.config.ConfigHandler;
 import com.volmit.turntable.net.EndTurn;
 import com.volmit.turntable.net.EngagementClosed;
 import com.volmit.turntable.net.UpdateAP;
@@ -98,7 +99,7 @@ public class CommonProxy {
             return;
         }
 
-        if (event.getSource().getTrueSource() != null && !host.consume(event.getSource().getTrueSource(), Turntable.AP_COST_ATTACK)) {
+        if (event.getSource().getTrueSource() != null && !host.consume(event.getSource().getTrueSource(), ConfigHandler.AP_COST_ATTACK)) {
             event.setCanceled(true);
             return;
         }
@@ -202,19 +203,6 @@ public class CommonProxy {
     }
 
     @SubscribeEvent
-    public void on(BlockEvent.CropGrowEvent event) {
-        if (FMLCommonHandler.instance().getEffectiveSide() == Side.CLIENT) {
-            return;
-        }
-
-        Engagement e = host.getInField(event.getPos());
-
-        if (e != null) {
-            event.setCanceled(true);
-        }
-    }
-
-    @SubscribeEvent
     public void on(LivingEntityUseItemEvent.Finish event) {
         if (FMLCommonHandler.instance().getEffectiveSide() == Side.CLIENT) {
             return;
@@ -259,15 +247,6 @@ public class CommonProxy {
             return;
         }
 
-        Engagement e = host.getInField(event.getPos());
-
-        if (e != null) {
-            event.setCanceled(true);
-        }
-    }
-
-    @SubscribeEvent
-    public void on(BlockEvent.CreateFluidSourceEvent event) {
         Engagement e = host.getInField(event.getPos());
 
         if (e != null) {

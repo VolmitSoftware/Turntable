@@ -1,6 +1,7 @@
 package com.volmit.turntable.system;
 
 import com.volmit.turntable.Turntable;
+import com.volmit.turntable.config.ConfigHandler;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.passive.EntityAnimal;
 import net.minecraft.entity.player.EntityPlayer;
@@ -19,11 +20,11 @@ public class TurnBasedHost {
     }
 
     public Engagement getInField(double x, double y, double z) {
-        return getEngagement(Turntable.ENCOUNTER_FIELD_RADIUS, x, y, z);
+        return getEngagement(ConfigHandler.ENCOUNTER_FIELD_RADIUS, x, y, z);
     }
 
     public Engagement getInField(BlockPos p) {
-        return getEngagement(Turntable.ENCOUNTER_FIELD_RADIUS, p.getX(), p.getY(), p.getZ());
+        return getEngagement(ConfigHandler.ENCOUNTER_FIELD_RADIUS, p.getX(), p.getY(), p.getZ());
     }
 
     public Engagement getEngagement(double threshold, BlockPos pos) {

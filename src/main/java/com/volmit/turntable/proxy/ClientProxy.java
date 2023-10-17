@@ -1,6 +1,7 @@
 package com.volmit.turntable.proxy;
 
 import com.volmit.turntable.Turntable;
+import com.volmit.turntable.config.ConfigHandler;
 import com.volmit.turntable.net.EndTurn;
 import com.volmit.turntable.system.Member;
 import net.minecraft.client.Minecraft;
@@ -11,16 +12,20 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.SharedMonsterAttributes;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.math.Vec3d;
+import net.minecraftforge.client.event.EntityViewRenderEvent;
 import net.minecraftforge.client.event.FOVUpdateEvent;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
+import net.minecraftforge.event.entity.living.LivingEvent;
 import net.minecraftforge.fml.client.registry.ClientRegistry;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.common.event.FMLInterModComms;
 import net.minecraftforge.fml.common.eventhandler.EventPriority;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.InputEvent;
 import net.minecraftforge.fml.common.gameevent.PlayerEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
 import org.lwjgl.input.Mouse;
+import scala.reflect.internal.Trees;
 
 import java.awt.event.KeyEvent;
 import java.util.List;
@@ -35,6 +40,9 @@ public class ClientProxy extends CommonProxy {
     public static float lastTickYaw;
     public static float lastTickPitch;
     public static int cameraInterruptionTicks = 0;
+    public static int combat = 20;
+    public static float currentZoomMultiplier = 1f;
+    public static float targetZoomMultiplier = 1f;
 
     public static final KeyBinding K_END_TURN = new KeyBinding("key.turntable.description.endturn", KeyEvent.VK_N, "key.categories.turntable");
     private boolean endTurnPressed = false;
@@ -56,6 +64,15 @@ public class ClientProxy extends CommonProxy {
         lookAt(entity.getPositionEyes(1f));
     }
 
+    @SubscribeEvent
+    public static void onFOVModifier(EntityViewRenderEvent.FOVModifier event) {
+        event.setFOV(Minecraft.getMinecraft().gameSettings.fovSetting / currentZoomMultiplier);
+    }
+
+    public static void zoom(float multiplier) {
+        targetZoomMultiplier = (float) Math.min(10, Math.max(1, multiplier));
+    }
+
     public static void lookAt(Vec3d target) {
         EntityPlayerSP player = Minecraft.getMinecraft().player;
 
@@ -64,6 +81,8 @@ public class ClientProxy extends CommonProxy {
         }
 
         look(target.subtract(player.getPositionEyes(1f)));
+        double distance = player.getPositionEyes(1f).distanceTo(target)+1;
+        zoom(distance > 30 ? 10 : (float) (30d/(30-distance)));
     }
 
     public static void look(Vec3d direction) {
@@ -129,8 +148,8 @@ public class ClientProxy extends CommonProxy {
         int dX = Mouse.getDX();
         int dY = Mouse.getDY();
 
-        if (Math.abs(dX) > Turntable.MOUSE_BREAK_OUT_THRESHOLD || Math.abs(dY) > Turntable.MOUSE_BREAK_OUT_THRESHOLD) {
-            cameraInterruptionTicks = Turntable.MOUSE_BREAK_OUT_TICKS;
+        if (Math.abs(dX) > ConfigHandler.K_MOUSE_BREAK_OUT_THRESHOLD || Math.abs(dY) > ConfigHandler.K_MOUSE_BREAK_OUT_THRESHOLD) {
+            cameraInterruptionTicks = ConfigHandler.K_MOUSE_BREAK_OUT_TICKS;
         }
     }
 
@@ -143,26 +162,47 @@ public class ClientProxy extends CommonProxy {
             return;
         }
 
+        if(targetZoomMultiplier != currentZoomMultiplier){
+            currentZoomMultiplier = flerp(currentZoomMultiplier, targetZoomMultiplier, ConfigHandler.K_CAMERA_TRACKING_SPEED);
+        }
+
         if (targetEntity != null && event.phase == TickEvent.Phase.START && mc.world != null && mc.player != null) {
             if (targetYaw != null) {
                 float interpolatedYaw = lastTickYaw + (mc.player.rotationYaw - lastTickYaw) * partialTicks;
-                mc.player.rotationYaw = flerp(interpolatedYaw, targetYaw, Turntable.CAMERA_TRACKING_SPEED);
+                mc.player.rotationYaw = interpolateAngle(interpolatedYaw, targetYaw, ConfigHandler.K_CAMERA_TRACKING_SPEED * currentZoomMultiplier);
 
-                if (Math.abs(targetYaw - mc.player.rotationYaw) < 0.01f) {
+                if (Math.abs(angleDifference(targetYaw, mc.player.rotationYaw)) < 0.01f) {
                     targetYaw = null;
                 }
             }
 
             if (targetPitch != null) {
                 float interpolatedPitch = lastTickPitch + (mc.player.rotationPitch - lastTickPitch) * partialTicks;
-                mc.player.rotationPitch = flerp(interpolatedPitch, targetPitch, Turntable.CAMERA_TRACKING_SPEED);
+                mc.player.rotationPitch = interpolateAngle(interpolatedPitch, targetPitch, ConfigHandler.K_CAMERA_TRACKING_SPEED * currentZoomMultiplier);
 
-                if (Math.abs(targetPitch - mc.player.rotationPitch) < 0.01f) {
+                if (Math.abs(angleDifference(targetPitch, mc.player.rotationPitch)) < 0.01f) {
                     targetPitch = null;
                 }
             }
         }
+
+        if(targetEntity == null || turnOrder == null){
+            zoom(1f);
+        }
     }
+
+    private float angleDifference(float a, float b) {
+        float diff = (b - a + 180) % 360 - 180;
+        if (diff < -180) diff += 360;
+        return diff;
+    }
+
+    private float interpolateAngle(float startAngle, float targetAngle, float alpha) {
+        float diff = angleDifference(startAngle, targetAngle);
+        return startAngle + diff * alpha;
+    }
+
+
 
     @SubscribeEvent
     public static void onClientTick(TickEvent.ClientTickEvent event) {
@@ -176,6 +216,20 @@ public class ClientProxy extends CommonProxy {
             lastTickYaw = mc.player.rotationYaw;
             lastTickPitch = mc.player.rotationPitch;
             lookAt(targetEntity);
+        }
+
+        if(combat++ > 20 && Turntable.proxy instanceof ClientProxy){
+            combat = 0;
+            ClientProxy p = ((ClientProxy) Turntable.proxy);
+
+            try
+            {
+                Class.forName("org.cyberpwn.resonance.Resonance").getDeclaredMethod("combat", boolean.class).invoke(null, p.turnOrder != null);
+            }
+
+            catch(Throwable e){
+
+            }
         }
     }
 
@@ -203,7 +257,7 @@ public class ClientProxy extends CommonProxy {
             int x = 0;
             int y = 0;
             int fillColor = 0xFFFFFFFF;
-            Gui.drawRect(x, y, (int) (x + (w * (ap / Turntable.AP_PER_TURN))), barHeight, fillColor);
+            Gui.drawRect(x, y, (int) (x + (w * (ap / ConfigHandler.AP_PER_TURN))), barHeight, fillColor);
         }
 
         if(turnOrder != null){
@@ -237,17 +291,6 @@ public class ClientProxy extends CommonProxy {
         }
 
         return Math.max(20, tw);
-    }
-
-    @SubscribeEvent(priority = EventPriority.HIGHEST)
-    public void onFOVUpdate(FOVUpdateEvent event) {
-        if (event.getEntity().getEntityAttribute(SharedMonsterAttributes.MOVEMENT_SPEED).hasModifier(Member.speedModifier())) {
-            float originalFOV = event.getFov();
-            float affectedFOV = event.getNewfov();
-            float difference = originalFOV - affectedFOV;
-            float myDesiredFOV = Minecraft.getMinecraft().gameSettings.fovSetting;
-            event.setNewfov(myDesiredFOV + difference);
-        }
     }
 
     public void registerRenderers() {
