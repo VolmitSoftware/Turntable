@@ -640,13 +640,13 @@ public class Member {
 
     public void onCloseContainer(PlayerContainerEvent.Close event) {
         if (!consume(ConfigHandler.AP_COST_CLOSE_CONTAINER)) {
-            event.setCanceled(true);
+            //event.setCanceled(true);
         }
     }
 
     public void onOpenContainer(PlayerContainerEvent.Open event) {
         if (!consume(ConfigHandler.AP_COST_OPEN_CONTAINER)) {
-            event.setCanceled(true);
+            //event.setCanceled(true);
         }
     }
 

@@ -32,7 +32,7 @@ import java.util.List;
 
 @Mod.EventBusSubscriber
 public class ClientProxy extends CommonProxy {
-    private List<Entity> turnOrder = null;
+    private static List<Entity> turnOrder = null;
     private float ap = -1;
     public static Float targetYaw;
     public static Float targetPitch;
@@ -77,6 +77,10 @@ public class ClientProxy extends CommonProxy {
         EntityPlayerSP player = Minecraft.getMinecraft().player;
 
         if (player == null) {
+            return;
+        }
+
+        if(turnOrder == null || turnOrder.isEmpty()){
             return;
         }
 
@@ -220,11 +224,10 @@ public class ClientProxy extends CommonProxy {
 
         if(combat++ > 20 && Turntable.proxy instanceof ClientProxy){
             combat = 0;
-            ClientProxy p = ((ClientProxy) Turntable.proxy);
 
             try
             {
-                Class.forName("org.cyberpwn.resonance.Resonance").getDeclaredMethod("combat", boolean.class).invoke(null, p.turnOrder != null);
+                Class.forName("org.cyberpwn.resonance.Resonance").getDeclaredMethod("combat", boolean.class).invoke(null, turnOrder != null);
             }
 
             catch(Throwable e){
