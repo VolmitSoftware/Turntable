@@ -149,12 +149,7 @@ public class ClientProxy extends CommonProxy {
 
     @SubscribeEvent
     public void onMouseInput(InputEvent.MouseInputEvent event) {
-        int dX = Mouse.getDX();
-        int dY = Mouse.getDY();
-
-        if (Math.abs(dX) > ConfigHandler.K_MOUSE_BREAK_OUT_THRESHOLD || Math.abs(dY) > ConfigHandler.K_MOUSE_BREAK_OUT_THRESHOLD) {
-            cameraInterruptionTicks = ConfigHandler.K_MOUSE_BREAK_OUT_TICKS;
-        }
+        cameraInterruptionTicks = ConfigHandler.K_MOUSE_BREAK_OUT_TICKS;
     }
 
     @SubscribeEvent
@@ -255,7 +250,6 @@ public class ClientProxy extends CommonProxy {
         if (turnOrder != null && ap > 0 && mc.currentScreen == null) {
             int w = event.getResolution().getScaledWidth();
             int h = event.getResolution().getScaledHeight();
-            int barWidth = w;  // Bar width in pixels
             int barHeight = 3;  // Bar height in pixels
             int x = 0;
             int y = 0;
@@ -269,7 +263,6 @@ public class ClientProxy extends CommonProxy {
             int paddX = 10;
             for(Entity i : turnOrder){
                 boolean you = i instanceof EntityPlayer && i.getUniqueID().equals(Minecraft.getMinecraft().player.getUniqueID());
-                String name = Member.getName(i);
                 turnX += paddX + renderTurnCard(turnX, turnY, i, you?0xFFFFFFFF : 0xBBFFFFFF);
             }
         }
