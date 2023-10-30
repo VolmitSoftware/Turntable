@@ -32,8 +32,18 @@ import java.util.List;
 
 @Mod.EventBusSubscriber
 public class ClientProxy extends CommonProxy {
+    private static int[] barColors = {
+        0xFFFFFFFF, // white
+        0xFFc0ffb8,
+        0xFF78ccfa,
+        0xFFe7ff70,
+        0xFF4f9eff,
+        0xFFff4f6f,
+        0xFFf019ff
+        };
     private static List<Entity> turnOrder = null;
     private float ap = -1;
+    private float tap = -1;
     public static Float targetYaw;
     public static Float targetPitch;
     public static Entity targetEntity;
@@ -113,11 +123,11 @@ public class ClientProxy extends CommonProxy {
     public void onEngagementClosed() {
         turnOrder = null;
         targetEntity = null;
-        ap = -1;
+        tap = -1;
     }
 
     public void onAPUpdate(float ap) {
-        this.ap = ap;
+        this.tap = ap;
     }
 
     public void onEngagementUpdate(List<Entity> entities) {
@@ -154,14 +164,29 @@ public class ClientProxy extends CommonProxy {
 
     @SubscribeEvent
     public void onRenderTick(TickEvent.RenderTickEvent event) {
+
         Minecraft mc = Minecraft.getMinecraft();
         float partialTicks = event.renderTickTime;
+
+        if(tap != ap){
+            ap = flerp(ap, tap, 0.1f * partialTicks);
+        }
+
+        boolean g = false;
+
+        if(targetZoomMultiplier != currentZoomMultiplier && targetZoomMultiplier == 1){
+            currentZoomMultiplier = flerp(currentZoomMultiplier, targetZoomMultiplier, ConfigHandler.K_CAMERA_TRACKING_SPEED);
+        }
+
+        else{
+            g = true;
+        }
 
         if(cameraInterruptionTicks > 0){
             return;
         }
 
-        if(targetZoomMultiplier != currentZoomMultiplier){
+        if(targetZoomMultiplier != currentZoomMultiplier && targetZoomMultiplier != 1){
             currentZoomMultiplier = flerp(currentZoomMultiplier, targetZoomMultiplier, ConfigHandler.K_CAMERA_TRACKING_SPEED);
         }
 
@@ -239,6 +264,31 @@ public class ClientProxy extends CommonProxy {
         targetPitch = null;
     }
 
+    public void drawAPBar(RenderGameOverlayEvent.Post event){
+        int w = event.getResolution().getScaledWidth();
+        int h = event.getResolution().getScaledHeight();
+        int barHeight = 3;  // Bar height in pixels
+        int x = 0;
+        int y = 0;
+
+        int mult = 0;
+        float fap = ap;
+        while(fap > ConfigHandler.AP_PER_TURN)
+        {
+            fap -= ConfigHandler.AP_PER_TURN;
+            mult++;
+        }
+
+        if(mult > 0) {
+            Gui.drawRect(x, y, (x + w), barHeight, barColors[Math.min(mult-1, barColors.length-1)]);
+            Gui.drawRect(x, y, (int) (x + (w * (fap / ConfigHandler.AP_PER_TURN))), barHeight, barColors[Math.min(mult, barColors.length-1)]);
+        }
+
+        else {
+            Gui.drawRect(x, y, (int) (x + (w * (fap / ConfigHandler.AP_PER_TURN))), barHeight, barColors[Math.min(mult, barColors.length-1)]);
+        }
+    }
+
     @SubscribeEvent
     public void onRenderGameOverlay(RenderGameOverlayEvent.Post event) {
         if (event.getType() != RenderGameOverlayEvent.ElementType.TEXT) {
@@ -248,13 +298,7 @@ public class ClientProxy extends CommonProxy {
         Minecraft mc = Minecraft.getMinecraft();
 
         if (turnOrder != null && ap > 0 && mc.currentScreen == null) {
-            int w = event.getResolution().getScaledWidth();
-            int h = event.getResolution().getScaledHeight();
-            int barHeight = 3;  // Bar height in pixels
-            int x = 0;
-            int y = 0;
-            int fillColor = 0xFFFFFFFF;
-            Gui.drawRect(x, y, (int) (x + (w * (ap / ConfigHandler.AP_PER_TURN))), barHeight, fillColor);
+           drawAPBar(event);
         }
 
         if(turnOrder != null){

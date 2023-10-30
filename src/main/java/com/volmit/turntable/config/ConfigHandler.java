@@ -13,8 +13,9 @@ public class ConfigHandler {
 
 
     /// Defaults
-    public static final double D_ENCOUNTER_ADD_RADIUS = 4;
-    public static final double D_ENCOUNTER_FIELD_RADIUS = 16;
+    public static final double D_ENCOUNTER_ADD_RADIUS = 16;
+    public static final double D_ENCOUNTER_FIELD_RADIUS = 24;
+    public static final float D_BONUS_AP_PER_ENEMY = 0.5f;
     public static final float D_AP_COST_MOVEMENT = 0.006f;
     public static final float D_AP_COST_BLOCK_DESTROY = 0.25f;
     public static final float D_AP_COST_BLOCK_BREAK = 0.5f;
@@ -33,11 +34,13 @@ public class ConfigHandler {
     public static final float D_AP_COST_JUMP = 0.05f;
     public static final float D_AP_PER_TURN = 3f;
     public static final int D_TURN_TIME = 100;
-    public static final int D_FROZEN_AUTO_ADVANCE_TIME = 50;
+    public static final int D_FROZEN_AUTO_ADVANCE_TIME = 5;
     public static final int D_MAX_TURN_TIME = 1200;
     public static final float D_K_CAMERA_TRACKING_SPEED = 0.1f;
+    public static final float D_POTION_MODIFIER_ADD = 0.5f;
     public static final int D_K_MOUSE_BREAK_OUT_THRESHOLD = 1;
     public static final int D_K_MOUSE_BREAK_OUT_TICKS = 50;
+    public static final boolean D_FORCE_TICK_ENTITIES = true;
 
     /// Configuration values
     public static double ENCOUNTER_ADD_RADIUS = D_ENCOUNTER_ADD_RADIUS;
@@ -63,8 +66,11 @@ public class ConfigHandler {
     public static int FROZEN_AUTO_ADVANCE_TIME = D_FROZEN_AUTO_ADVANCE_TIME;
     public static int MAX_TURN_TIME = D_MAX_TURN_TIME;
     public static float K_CAMERA_TRACKING_SPEED = D_K_CAMERA_TRACKING_SPEED;
+    public static float POTION_MODIFIER_ADD = D_POTION_MODIFIER_ADD;
     public static int K_MOUSE_BREAK_OUT_THRESHOLD = D_K_MOUSE_BREAK_OUT_THRESHOLD;
     public static int K_MOUSE_BREAK_OUT_TICKS = D_K_MOUSE_BREAK_OUT_TICKS;
+    public static boolean FORCE_TICK_ENTITIES = D_FORCE_TICK_ENTITIES;
+    public static float BONUS_AP_PER_ENEMY = D_BONUS_AP_PER_ENEMY;
 
 
     public static void init(File file) {

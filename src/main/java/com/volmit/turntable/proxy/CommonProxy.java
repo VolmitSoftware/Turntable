@@ -99,12 +99,21 @@ public class CommonProxy {
             return;
         }
 
+        double mult = event.getSource().getTrueSource() != null && event.getSource().getTrueSource() instanceof EntityPlayer ? ConfigHandler.AP_COST_ATTACK : ConfigHandler.AP_COST_ATTACK * 8;
         if (event.getSource().getTrueSource() != null && !host.consume(event.getSource().getTrueSource(), ConfigHandler.AP_COST_ATTACK)) {
             event.setCanceled(true);
             return;
         }
 
         Member m = host.getMember(event.getEntity());
+
+        if(event.getSource().getTrueSource() != null && host.getMember(event.getSource().getTrueSource()) != null){
+            Member mm = host.getMember(event.getSource().getTrueSource());
+            if(!mm.isPlayer() && mm.active)
+            {
+                mm.onOutOfAP();
+            }
+        }
 
         if (m != null) {
             if (!m.shouldTakeDamage(event)) {

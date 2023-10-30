@@ -9,6 +9,7 @@ import net.minecraft.entity.EntityAreaEffectCloud;
 import net.minecraft.entity.IProjectile;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.item.EntityXPOrb;
+import net.minecraft.entity.passive.EntityAnimal;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.entity.projectile.EntityFireball;
 import net.minecraft.world.World;
@@ -48,7 +49,9 @@ public class Engagement {
         for (Member i : new ArrayList<>(members)) {
             for (Entity j : i.entity.world.getEntitiesWithinAABB(Entity.class, i.entity.getEntityBoundingBox().grow(ConfigHandler.ENCOUNTER_ADD_RADIUS))) {
                 if (canEngage(j) && host.getEngagement(j) == null && Member.hasLOS(i.entity, j, (int)ConfigHandler.ENCOUNTER_ADD_RADIUS)) {
-                    addMember(new Member(this, j, host.getInitiative(j)));
+                    if(!(j instanceof EntityAnimal)){
+                        addMember(new Member(this, j, host.getInitiative(j)));
+                    }
                 }
             }
         }

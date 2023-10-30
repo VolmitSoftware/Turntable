@@ -16,6 +16,8 @@ import net.minecraft.entity.monster.EntityZombie;
 import net.minecraft.entity.passive.EntityAnimal;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.init.MobEffects;
+import net.minecraft.init.PotionTypes;
 import net.minecraft.init.SoundEvents;
 import net.minecraft.potion.PotionEffect;
 import net.minecraft.util.DamageSource;
@@ -182,6 +184,14 @@ public class Member {
         return getName(entity);
     }
 
+    public boolean consumeBonus(float ap) {
+        if(actionPoints - ap > ConfigHandler.AP_PER_TURN) {
+            return consume(ap);
+        }
+
+        return false;
+    }
+
     public boolean consume(float ap) {
         if (!active) {
             return false;
@@ -259,11 +269,31 @@ public class Member {
     public void onBeginTurn() {
         turnTicks = 0;
         actionPoints = ConfigHandler.AP_PER_TURN * (isEnderDragon() ? 2.5f : 1f);
-        uap();
-        if (isPlayer()) {
-            entity.sendMessage(new TextComponentString("It's Your Turn!"));
+
+
+        if(isLiving()) {
+            if(living().isPotionActive(MobEffects.SPEED)) {
+                actionPoints += ConfigHandler.POTION_MODIFIER_ADD;
+            }
+
+            if(living().isPotionActive(MobEffects.SLOWNESS)) {
+                actionPoints -= ConfigHandler.POTION_MODIFIER_ADD;
+            }
         }
 
+        if (isPlayer()) {
+            entity.sendMessage(new TextComponentString("It's Your Turn!"));
+
+            for(Member i :
+                engagement.members){
+                if(!i.isPlayer())
+                {
+                    actionPoints += ConfigHandler.BONUS_AP_PER_ENEMY;
+                }
+            }
+        }
+
+        uap();
         lx = entity.posX;
         ly = entity.posY;
         lz = entity.posZ;
@@ -310,6 +340,13 @@ public class Member {
         lz = entity.posZ;
         double distance = Math.sqrt(Math.pow(px - lx, 2) + Math.pow(py - ly, 2) + Math.pow(pz - lz, 2));
 
+        if(!isPlayer() && ConfigHandler.FORCE_TICK_ENTITIES) {
+            entity.onUpdate();
+            if (!consume(0.01f)) {
+                onOutOfAP();
+            }
+        }
+
         if (distance > 0.01) {
             if (!consume(ConfigHandler.AP_COST_MOVEMENT)) {
                 onOutOfAP();
@@ -323,9 +360,8 @@ public class Member {
         if(frozen && active){
             frozenTicks++;
 
-            if(frozenTicks > ConfigHandler.FROZEN_AUTO_ADVANCE_TIME){
+            if(!isPlayer() || frozenTicks > ConfigHandler.FROZEN_AUTO_ADVANCE_TIME){
                 engagement.nextTurn();
-                entity.sendMessage(new TextComponentString("You were frozen for too long!"));
             }
         } else{
             frozenTicks = 0;
@@ -575,7 +611,7 @@ public class Member {
             return;
         }
 
-        if (!active || !consume(ConfigHandler.AP_COST_HEAL * event.getAmount())) {
+        if (!active || !consumeBonus(ConfigHandler.AP_COST_HEAL * event.getAmount())) {
             event.setCanceled(true);
         }
     }
@@ -633,7 +669,7 @@ public class Member {
     }
 
     public void onPickup(EntityItemPickupEvent event) {
-        if (!active || !consume(ConfigHandler.AP_COST_PICKUP)) {
+        if (!active || !consumeBonus(ConfigHandler.AP_COST_PICKUP)) {
             event.setCanceled(true);
         }
     }
