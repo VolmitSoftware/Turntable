@@ -11,6 +11,7 @@ import net.minecraft.world.World;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.logging.Logger;
 
 public class TurnBasedHost {
     public List<Engagement> engagements;
@@ -107,7 +108,31 @@ public class TurnBasedHost {
             return;
         }
 
-        Engagement en = new Engagement(this);
+        EngagementType type = EngagementType.HOSTILE;
+        int players = 0;
+        int hostiles = 0;
+        int passives = 0;
+
+        for(Entity i : e){
+            if(i instanceof EntityPlayer){
+                players++;
+            }else if(i instanceof EntityAnimal) {
+                passives++;
+            } else
+            {
+                hostiles++;
+            }
+        }
+
+        Logger.getLogger("f").info("Players: " + players + " Hostiles: " + hostiles + " Passives: " + passives);
+
+        if(players > 1 && hostiles <= 0 && passives <= 0){
+            type = EngagementType.PLAYER;
+        } else if(passives > 0 && hostiles <= 0){
+            type = EngagementType.PASSIVE;
+        }
+
+        Engagement en = new Engagement(this, type);
         engagements.add(en);
         en.init(e);
     }

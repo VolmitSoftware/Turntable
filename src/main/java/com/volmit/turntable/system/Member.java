@@ -212,6 +212,14 @@ public class Member {
         return false;
     }
 
+    public boolean isPassive(){
+        return entity instanceof EntityAnimal;
+    }
+
+    public boolean isHostile(){
+        return !isPlayer() && !isPassive();
+    }
+
     public boolean isPlayer() {
         return entity instanceof EntityPlayer;
     }

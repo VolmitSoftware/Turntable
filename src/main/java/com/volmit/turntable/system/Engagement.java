@@ -24,9 +24,11 @@ public class Engagement {
     public boolean closed;
     public Member lastMember;
     public int ticks;
+    public EngagementType type;
 
-    public Engagement(TurnBasedHost host) {
+    public Engagement(TurnBasedHost host, EngagementType type) {
         ticks = 0;
+        this.type = type;
         this.host = host;
         members = new ArrayList<>();
         closed = false;
@@ -41,7 +43,7 @@ public class Engagement {
 
         addNearby();
         sortByInitiative();
-        Turntable.logger.info("An engagement has started between " + members.size() + " entities.");
+        Turntable.logger.info("An engagement has started between " + members.size() + " entities. type: " + type);
         updateTurnOrder();
     }
 
@@ -136,6 +138,53 @@ public class Engagement {
             Turntable.logger.info("Engagement closing due to lack of members! (<2)");
             close();
             return;
+        }
+
+        int hostile = 0;
+        int players = 0;
+        int passive = 0;
+
+        for(Member i : members){
+            if(i.isHostile()){
+                hostile++;
+            } else if(i.isPassive()){
+                passive++;
+            } else if(i.isPlayer()){
+                players++;
+            }
+        }
+
+        if(type == EngagementType.HOSTILE && hostile <=0){
+            Turntable.logger.info("Engagement closing due to lack of hostile members! (<1)");
+            close();
+            return;
+        }
+
+        if(type == EngagementType.PASSIVE && passive <= 0){
+            if(hostile > 0){
+                type = EngagementType.HOSTILE;
+                Turntable.logger.info("Engagement changed type to hostile from passive");
+            }
+
+            else{
+                Turntable.logger.info("Engagement closing due to lack of passive members! (<1)");
+                close();
+                return;
+            }
+        }
+
+        if(type == EngagementType.PLAYER && players <= 1){
+            if(hostile > 0){
+                type = EngagementType.HOSTILE;
+                Turntable.logger.info("Engagement changed type to hostile from passive");
+            } else if(passive > 0){
+                type = EngagementType.PASSIVE;
+                Turntable.logger.info("Engagement changed type to passive from player");
+            } else{
+                Turntable.logger.info("Engagement closing due to lack of player members! (<2)");
+                close();
+                return;
+            }
         }
 
         if (lastMember == null) {
